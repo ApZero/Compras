@@ -1,6 +1,6 @@
 {
-  "name": "Mercado 2026",
-  "short_name": "Mercado",
+  "name": "Compras",
+  "short_name": "Compras",
   "description": "Gastos del hogar — datos 100% locales en este dispositivo",
   "start_url": "./",
   "scope": "./",
