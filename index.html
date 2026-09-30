@@ -7,11 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Mercado 2026"/>
+<meta name="apple-mobile-web-app-title" content="Compras"/>
 <link rel="manifest" href="manifest.webmanifest"/>
 <link rel="icon" type="image/png" href="icon-192.png"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
-<title>Mercado 2026</title>
+<title>Compras</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -1446,7 +1446,7 @@ function BackupModal({purchases, onRestore, onEraseAll, onClose}) {
   const doExport = async () => {
     try {
       const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
-      downloadJSON(await buildBackupPayload(), `mercado2026_backup_${ts}.json`);
+      downloadJSON(await buildBackupPayload(), `compras_backup_${ts}.json`);
       setStatus('✅ Backup descargado correctamente.'); setIsErr(false);
     } catch(e) { setStatus('❌ No se pudo crear el backup: ' + e.message); setIsErr(true); }
   };
@@ -2671,7 +2671,7 @@ function App() {
       busy = true;
       try {
         const payload = await buildBackupPayload();
-        downloadJSON(payload, `mercado2026_backup_${key}.json`);
+        downloadJSON(payload, `compras_backup_${key}.json`);
         try { localStorage.setItem(LS_LAST_BACKUP, key); } catch {}
         setToast('💾 Backup diario descargado');
         setTimeout(() => setToast(''), 3500);

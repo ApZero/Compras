@@ -1,7 +1,7 @@
-// Mercado 2026 (local) — offline cache. Data lives in IndexedDB, never here.
+// Compras (local) — offline cache. Data lives in IndexedDB, never here.
 // Strategy: stale-while-revalidate. The app opens instantly from cache and
 // refreshes itself in the background, so updates appear on the next launch.
-const CACHE = 'mercado2026-local-v1'; // bump to force-drop old caches
+const CACHE = 'compras-local-v2'; // bump to force-drop old caches
 
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 const CDN = [
