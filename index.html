@@ -1,0 +1,3148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#0f0f13" id="theme-color-meta"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Mercado 2026"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" type="image/png" href="icon-192.png"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<title>Mercado 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{overflow-x:hidden;max-width:100vw;}body{font-family:'DM Mono','Courier New',monospace;min-height:100vh;transition:background 0.3s,color 0.3s;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#f97316;border-radius:2px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.fade{animation:fadeIn 0.25s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:translateY(0);}}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.slide{animation:slideUp 0.3s cubic-bezier(0.16,1,0.3,1);}
+input,select{font-family:inherit;}
+input:focus,select:focus{outline:none;}
+button{cursor:pointer;font-family:inherit;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+.sheet{border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:24px 20px 48px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+
+/* ── Desktop adaptations ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  /* Give every view's outer padding more breathing room */
+  .fade { padding: 24px 32px !important; }
+
+  /* Two-column stat cards (direct children of a view, like Dashboard's
+     "Prom. mensual"/"Mes más alto" pair) become a 4-column row on wide
+     screens. We scope this to direct children only, so form field pairs
+     inside modals (Cantidad/Unidad, Fecha/Tienda, etc.) are unaffected. */
+  .fade > div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* Modals: center as a proper dialog instead of a bottom sheet */
+  .overlay { align-items: center !important; }
+  .sheet {
+    border-radius: 20px !important;
+    max-width: 560px !important;
+    max-height: 85vh !important;
+  }
+
+  /* Slightly larger base font for readability at arm's length on a monitor */
+  body { font-size: 15px; }
+
+  /* Hover affordance for clickable rows/cards already using onMouseEnter,
+     but ensure buttons/inputs feel native on desktop (bigger click targets) */
+  button { cursor: pointer; }
+  input, select { font-size: 14px !important; }
+}
+
+@media (min-width: 1200px) {
+  /* On very large screens, cap growth so it doesn't feel like an empty page */
+  body { display: flex; justify-content: center; }
+}
+</style>
+
+
+</head>
+<body>
+<div id="root"></div>
+<script>
+const CATEGORIES_SEED = ["Frutas", "Verduras", "Lácteos", "Cárnicos", "Panificados", "Almacén y Secos", "Condimentos y Salsas", "Conservas y Enlatados", "Snacks y Dulces", "Bebidas", "Limpieza", "Higiene Personal", "Mascotas", "Papelería", "Otros"].sort((a,b)=>a.localeCompare(b,'es'));
+const ALL_NOMBRES_SEED = ["Abono","Aceite","Aceite de oliva","Aceitunas","Acelga","Acondicionador","Afeitadora","Agua","Agua gasificada","Agua mineral","Agua tónica","Aguacate","Ajo","Ajo en polvo","Ají molido","Albahaca","Alcohol","Almendras","Almidón","Almidón de mandioca","Almidón de papa","Antigrasa","Aromatizante","Arrocillo","Arroz","Arvejas","Avena","Azafrán","Azúcar","Azúcar impalpable","Banana","Banana deshidratada","Barra cereal","Batata","Bebida energética","Belleza","Bicarbonato de sodio","Boldo","Bolsa","Bolsa basura","Bretzel","Brócoli","Buffet","Café máquina","Café sobre","Café soluble","Calabaza","Canela","Caramelos","Carbón","Carne","Carne asado","Cebolla","Cebolla en polvo","Cebolla morada","Cebollita","Cepillo dental","Cereal","Cereal sin gluten","Champiñones","Chicle","Chimichurri","Chipa","Chipa Guazu","Chips","Chips de chocolate","Choclo","Chocolatada","Chocolate","Chocolate en polvo","Chorizo","Chucrut","Chía","Cif","Ciruela","Ciruela seca","Clavo de olor","Cocina","Coco rallado","Cola de caballo","Coliflor","Colorante","Comida para Mopi","Comida para gallinas","Comidas varias","Comino","Condimento para mate","Confitería","Cranberrys","Crema de leche","Crema dental","Crema para peinar","Crema ácida","Creolina","Cubos Knorr","Curry","Cúrcuma","Desodorante","Desodorante de ambiente","Destapacaño","Detergente","Dulce de leche","Durazno","Dátiles","Empanada","Encurtido","Enjuague bucal","Escurridor","Esencia de vainilla","Espinaca","Esponja","Extracto de tomate","Fiambre","Fideo de arroz","Fideo soplado","Fideos","Fideos inflados","Fideos rápidos","Frutos secos","Fósforo","Galleta molida","Galletitas","Garbanzo","Gaseosa","Gel inodoro","Gelatina","Girasol","Goma xántica","Guayaba","Halls","Hamburguesa","Harina","Harina de arroz","Harina de avena","Harina de centeno","Harina de maíz","Harina de sorgo","Harpic","Helado","Higiene personal","Hilo dental","Huevos","Jabón","Jabón en polvo","Jabón líquido","Jabón líquido para ropa","Jamón","Jamón ahumado","Jengibre","Jugo","Jugo de uva","KEtchup","Ka'a He'e","Ketchup","Kiwi","Kombucha","Kuratu","Lasaña","Laurel","Lavandina","Lavavajillas","Leche","Leche condensada","Leche de coco","Leche en polvo","Lechuga","Lechuga repollada","Levadura seca","Limpiavidrios","Limpieza","Limón","Lino","Locote","Lomo ahumado","Lysoform","Macaroni & Cheese","Maicena","Malva","Mamón","Mandarina","Mandioca","Mango","Manteca","Manteca de maní","Manzana","Manzanilla","Maní","Marshmallows","Mayonesa","Mburucuya","Melón","Melón japones","Mermelada","Miel","Milanesa (comida)","Milanesa de pollo","Mix de berries","Mostaza","Mostaza en granos","Naranja","Nuez","Orégano","Otros","Pan","Pan de ajo","Pan árabe","Pancho","Papa","Papel higiénico","Papelería","Paprika dulce","Pastilla inodoro","Pañuelo","Pelón","Pepino","Pepino en conserva","Pepinos en conserva","Pepperoni","Pera","Perejil","Pescado","Pila","Pimentón","Pimienta","Piña","Polenta","Pollo","Polvo para hornear","Pomelo","Pomelo rojo","Pororó","Poroto","Postre","Premezcla sin gluten","Prepizza","Queso","Queso crema","Rabanito","Remolacha","Repollo","Requesón","Romero","Sagú","Sal","Salsa","Salsa de soja","Salsa para pizza","Sandwich de milanesa","Sandía","Sardinas","Sauerkraut","Semilla de calabaza","Semillas","Shampoo","Siempre vive","Snack","Snack sin gluten","Sopa en sobre","Suavizante","Syrup","Sésamo","Tangelo","Toalla de papel","Toalla femenina","Toallas femeninas","Toallitas húmedas","Tomate","Tomate cherry","Tortilla","Trapos","Té","Uva","Uva pasa","Vainilla en polvo","Veneno en aerosol","Veneno en polvo","Veneno líquido","Veneno para hormigas","Vinagre","Yerba","Yes Yes","Yes yes","Yoghurt","Yoghurt chico","Yoghurt griego","Yoghurt natural","Zanahoria","Zapallo","Zuchini"];
+
+const NOMBRE_TO_CAT_SEED = {"Abono":"Otros","Aceite":"Almacén y Secos","Aceite de oliva":"Almacén y Secos","Aceitunas":"Conservas y Enlatados","Acelga":"Verduras","Acondicionador":"Higiene Personal","Afeitadora":"Higiene Personal","Agua":"Bebidas","Agua gasificada":"Bebidas","Agua tónica":"Bebidas","Aguacate":"Frutas","Ají molido":"Condimentos y Salsas","Ajo":"Verduras","Ajo en polvo":"Condimentos y Salsas","Albahaca":"Verduras","Alcohol":"Limpieza","Alcohol de quemar":"Otros","Almendras":"Frutas","Almidón":"Almacén y Secos","Antigrasa":"Limpieza","Aromatizante":"Limpieza","Arrocillo":"Almacén y Secos","Arroz":"Almacén y Secos","Arvejas":"Conservas y Enlatados","Avena":"Almacén y Secos","Azafrán":"Condimentos y Salsas","Azúcar":"Almacén y Secos","Azúcar impalpable":"Almacén y Secos","Banana":"Frutas","Banana deshidratada":"Snacks y Dulces","Barra cereal":"Snacks y Dulces","Batata":"Verduras","Bebida energética":"Bebidas","Bicarbonato de sodio":"Almacén y Secos","Bife":"Cárnicos","Bolsa":"Otros","Bolsa basura":"Limpieza","Bretzel":"Panificados","Brócoli":"Verduras","Buffet":"Otros","Café máquina":"Almacén y Secos","Café sobre":"Almacén y Secos","Café soluble":"Almacén y Secos","Calabaza":"Verduras","Canela":"Condimentos y Salsas","Caramelos":"Snacks y Dulces","Carbón":"Otros","Carne":"Cárnicos","Carne asado":"Cárnicos","Cebolla":"Verduras","Cebolla en polvo":"Condimentos y Salsas","Cebolla morada":"Verduras","Cebollita":"Condimentos y Salsas","Cepillo dental":"Higiene Personal","Cereal":"Almacén y Secos","Champiñones":"Conservas y Enlatados","Chía":"Almacén y Secos","Chimichurri":"Condimentos y Salsas","Chipa":"Snacks y Dulces","Chipa Guazu":"Panificados","Chips":"Snacks y Dulces","Chips de chocolate":"Almacén y Secos","Choclo":"Conservas y Enlatados","Chocolatada":"Lácteos","Chocolate":"Snacks y Dulces","Chocolate en polvo":"Almacén y Secos","Chorizo":"Cárnicos","Cif":"Limpieza","Ciruela":"Frutas","Ciruela seca":"Frutas","Coco rallado":"Almacén y Secos","Cola de caballo":"Condimentos y Salsas","Coliflor":"Verduras","Colorante":"Almacén y Secos","Comida para gallinas":"Mascotas","Comida para Mopi":"Mascotas","Comidas varias":"Otros","Comino":"Condimentos y Salsas","Condimento para mate":"Condimentos y Salsas","Confitería":"Snacks y Dulces","Crema ácida":"Lácteos","Crema de leche":"Lácteos","Crema dental":"Higiene Personal","Creolina":"Limpieza","Cubos Knorr":"Condimentos y Salsas","Cúrcuma":"Condimentos y Salsas","Curry":"Condimentos y Salsas","Dátiles":"Snacks y Dulces","Desodorante":"Higiene Personal","Desodorante de ambiente":"Limpieza","Destapacaño":"Limpieza","Detergente":"Limpieza","Dulce de leche":"Snacks y Dulces","Durazno":"Frutas","Empanada":"Panificados","Encurtido":"Almacén y Secos","Enjuague bucal":"Higiene Personal","Escurridor":"Limpieza","Esencia de vainilla":"Almacén y Secos","Esponja":"Limpieza","Extracto de tomate":"Conservas y Enlatados","Fiambre":"Cárnicos","Fideo de arroz":"Almacén y Secos","Fideo soplado":"Almacén y Secos","Fideos":"Almacén y Secos","Fideos inflados":"Almacén y Secos","Fideos rápidos":"Almacén y Secos","Fósforo":"Otros","Frutos secos":"Snacks y Dulces","Galleta molida":"Almacén y Secos","Galletitas":"Snacks y Dulces","Garbanzo":"Almacén y Secos","Gaseosa":"Bebidas","Gel inodoro":"Limpieza","Gelatina":"Snacks y Dulces","Girasol":"Almacén y Secos","Guayaba":"Frutas","Hamburguesa":"Cárnicos","Harina":"Almacén y Secos","Harina de avena":"Almacén y Secos","Harina de centeno":"Almacén y Secos","Harina de sorgo":"Almacén y Secos","Harpic":"Limpieza","Helado":"Snacks y Dulces","Higiene personal":"Higiene Personal","Huevos":"Lácteos","Jabón":"Higiene Personal","Jabón en polvo":"Limpieza","Jabón líquido":"Higiene Personal","Jabón líquido para ropa":"Limpieza","Jamón":"Cárnicos","Jamón ahumado":"Cárnicos","Jengibre":"Verduras","Jugo":"Bebidas","Jugo de uva":"Bebidas","Ka'a He'e":"Almacén y Secos","Ketchup":"Condimentos y Salsas","Kiwi":"Frutas","Kuratu":"Condimentos y Salsas","Lasaña":"Almacén y Secos","Laurel":"Condimentos y Salsas","Lavandina":"Limpieza","Lavavajillas":"Limpieza","Leche":"Lácteos","Leche en polvo":"Lácteos","Lechuga":"Verduras","Lechuga repollada":"Verduras","Levadura seca":"Almacén y Secos","Limón":"Frutas","Limpiavidrios":"Limpieza","Limpieza":"Limpieza","Lino":"Almacén y Secos","Locote":"Verduras","Lomo ahumado":"Cárnicos","Macaroni & Cheese":"Almacén y Secos","Maicena":"Almacén y Secos","Mamón":"Frutas","Mango":"Frutas","Maní":"Almacén y Secos","Manteca":"Lácteos","Manteca de maní":"Almacén y Secos","Manzana":"Frutas","Manzanilla":"Condimentos y Salsas","Marshmallows":"Snacks y Dulces","Mayonesa":"Condimentos y Salsas","Mburucuya":"Frutas","Melón":"Frutas","Melón japones":"Frutas","Mermelada":"Conservas y Enlatados","Miel":"Conservas y Enlatados","Milanesa (comida)":"Cárnicos","Milanesa de pollo":"Cárnicos","Mix de berries":"Conservas y Enlatados","Mostaza":"Condimentos y Salsas","Mostaza en granos":"Condimentos y Salsas","Naranja":"Frutas","Nuez":"Almacén y Secos","Orégano":"Condimentos y Salsas","Otros":"Otros","Pan":"Panificados","Pan árabe":"Panificados","Pan de ajo":"Panificados","Pan de carne":"Cárnicos","Pancho":"Cárnicos","Pañuelo":"Higiene Personal","Papa":"Verduras","Papel higiénico":"Limpieza","Papelería":"Papelería","Paprika dulce":"Condimentos y Salsas","Pastilla inodoro":"Limpieza","Pelón":"Frutas","Pepino":"Verduras","Pepino en conserva":"Conservas y Enlatados","Pera":"Frutas","Perejil":"Verduras","Pescado":"Cárnicos","Pimentón":"Condimentos y Salsas","Pimienta":"Condimentos y Salsas","Piña":"Frutas","Pollo":"Cárnicos","Polvo para hornear":"Almacén y Secos","Pomelo":"Frutas","Pomelo rojo":"Frutas","Pororó":"Almacén y Secos","Poroto":"Almacén y Secos","Prepizza":"Panificados","Puchero":"Cárnicos","Queso":"Lácteos","Queso crema":"Lácteos","Rabanito":"Verduras","Remolacha":"Verduras","Repollo":"Verduras","Requesón":"Lácteos","Romero":"Condimentos y Salsas","Sal":"Condimentos y Salsas","Salsa":"Condimentos y Salsas","Salsa de soja":"Condimentos y Salsas","Salsa para pizza":"Condimentos y Salsas","Sandía":"Frutas","Sandwich de milanesa":"Panificados","Sardinas":"Conservas y Enlatados","Sauerkraut":"Conservas y Enlatados","Semilla de calabaza":"Almacén y Secos","Semillas":"Almacén y Secos","Sésamo":"Condimentos y Salsas","Shampoo":"Higiene Personal","Snack":"Snacks y Dulces","Sopa en sobre":"Almacén y Secos","Suavizante":"Limpieza","Syrup":"Almacén y Secos","Talco":"Higiene Personal","Tangelo":"Frutas","Té":"Bebidas","Toalla de papel":"Limpieza","Tomate":"Verduras","Tomate cherry":"Verduras","Tortilla":"Panificados","Trapos":"Limpieza","Uva":"Frutas","Uva pasa":"Almacén y Secos","Veneno en aerosol":"Limpieza","Veneno líquido":"Limpieza","Veneno para hormigas":"Limpieza","Vinagre":"Condimentos y Salsas","Yerba":"Almacén y Secos","Yes Yes":"Snacks y Dulces","Yoghurt":"Lácteos","Yoghurt chico":"Lácteos","Yoghurt natural":"Lácteos","Zanahoria":"Verduras","Zapallo":"Verduras","Zuchini":"Verduras","Pila":"Otros","Mandarina":"Frutas","Boldo":"Condimentos y Salsas","Malva":"Condimentos y Salsas","Siempre vive":"Condimentos y Salsas","Kombucha":"Bebidas","Yoghurt griego":"Lácteos","Lysoform":"Limpieza","Agua mineral":"Bebidas","Leche de coco":"Conservas y Enlatados","Belleza":"Higiene Personal","Crema para peinar":"Higiene Personal","Postre":"Snacks y Dulces","Vainilla en polvo":"Condimentos y Salsas","Chucrut":"Conservas y Enlatados","Pepinos en conserva":"Conservas y Enlatados","Chicle":"Snacks y Dulces","Leche condensada":"Lácteos","Hilo dental":"Higiene Personal","Toallas femeninas":"Higiene Personal","Snack sin gluten":"Snacks y Dulces","Almidón de papa":"Almacén y Secos","Harina de maíz":"Almacén y Secos","Almidón de mandioca":"Almacén y Secos","Clavo de olor":"Condimentos y Salsas","Sagú":"Almacén y Secos","Cereal sin gluten":"Snacks y Dulces","Toallitas húmedas":"Higiene Personal","Harina de arroz":"Almacén y Secos","Premezcla sin gluten":"Almacén y Secos","Goma xántica":"Almacén y Secos","Veneno en polvo":"Limpieza","Cocina":"Otros","Espinaca":"Verduras","Toalla femenina":"Higiene Personal","Pepperoni":"Cárnicos","Cranberrys":"Almacén y Secos","Polenta":"Almacén y Secos","Mandioca":"Verduras"};
+
+// Mutable runtime versions — start as seed, can be edited and persisted locally
+let CATEGORIES = [...CATEGORIES_SEED];
+let NOMBRE_TO_CAT = {...NOMBRE_TO_CAT_SEED};
+let ALL_NOMBRES = [...ALL_NOMBRES_SEED];
+
+function applyTaxonomyOverride(overrideObj) {
+  // overrideObj: { categories: [...], nombreToCat: {...} }
+  if (overrideObj.categories) CATEGORIES = overrideObj.categories;
+  if (overrideObj.nombreToCat) {
+    NOMBRE_TO_CAT = overrideObj.nombreToCat;
+    ALL_NOMBRES = [...new Set(Object.keys(NOMBRE_TO_CAT))].sort((a,b)=>a.localeCompare(b,'es'));
+  }
+}
+
+
+
+const UNITS_MAP    = {"Tomate":"kg","Uva":"kg","Cebolla":"kg","Naranja":"kg","Banana":"kg","Jengibre":"kg","Ajo":"kg","Limón":"kg","Remolacha":"kg","Manzana":"kg","Zanahoria":"kg","Carne":"kg","Pollo":"kg","Arroz":"UNI","Harina de arroz":"UNI","Choclo":"kg","Pan":"UNI","Avena":"UNI","Maní":"kg","Snack sin gluten":"UNI","Yoghurt":"UNI","Queso":"kg","Premezcla sin gluten":"UNI","Comida para Mopi":"kg","Afeitadora":"UNI","Lavandina":"UNI","Bolsa":"UNI","Azúcar":"UNI","Aromatizante":"UNI","Carne asado":"kg","Jamón":"kg","Aceite":"UNI","Almidón":"UNI","Yoghurt chico":"UNI","Orégano":"kg","Repollo":"kg","Chocolate":"UNI","Mango":"kg","Papa":"kg","Locote":"kg","Enjuague bucal":"UNI","Papel higiénico":"UNI","#N/A":"UNI","Aceite de oliva":"UNI","Vinagre":"UNI","Arrocillo":"UNI","Mandarina":"kg","Crema de leche":"UNI","Manteca":"kg","Gaseosa":"UNI","Leche":"UNI","Lechuga repollada":"kg","Pepperoni":"kg","Almendras":"kg","Bolsa basura":"UNI","Vainilla en polvo":"UNI","Mayonesa":"UNI","Ketchup":"UNI","Carbón":"UNI","Cranberrys":"kg","Mandioca":"kg","Huevos":"UNI","Extracto de tomate":"UNI","Pepino":"kg","Otros":"UNI","Yerba":"UNI","Café máquina":"UNI","Chips de chocolate":"kg","Chipa":"UNI","Cereal sin gluten":"UNI","Hilo dental":"UNI","Lechuga":"UNI","Pila":"UNI","Cocina":"kg","Pan árabe":"UNI","Piña":"kg","Detergente":"UNI","Esponja":"UNI","Agua":"UNI","Pimentón":"kg","Zuchini":"kg","Limpieza":"UNI","Bebida energética":"UNI","Veneno en aerosol":"UNI","Polvo para hornear":"kg","Bicarbonato de sodio":"kg","Shampoo":"UNI","Acondicionador":"UNI","Yoghurt griego":"UNI","Papelería":"UNI","Poroto":"UNI","Leche condensada":"UNI","Té":"UNI","Chips":"UNI","Batata":"kg","Queso crema":"UNI","Jabón líquido":"UNI","Crema dental":"UNI","Veneno en polvo":"UNI","Salsa de soja":"UNI","Mamón":"kg","Pororó":"kg","Manzanilla":"UNI","Siempre vive":"kg","Salsa para pizza":"UNI","Sal":"UNI","Jabón":"UNI","Abono":"UNI","Polenta":"UNI","Manteca de maní":"UNI","Uva pasa":"kg","Sauerkraut":"UNI","Pomelo":"kg","Mermelada":"UNI","Higiene personal":"UNI","Zapallo":"kg","Cúrcuma":"kg","Toalla de papel":"UNI"};
+
+
+
+</script>
+<script type="text/babel">
+
+const {useState,useMemo,useCallback,useRef,useEffect,createContext,useContext} = React;
+
+// ── theme ─────────────────────────────────────────────────────────────────────
+const ThemeCtx = createContext('dark');
+const useTheme = () => useContext(ThemeCtx);
+
+// theme-aware style helpers
+const T = {
+  bg:      d => d ? '#0f0f13' : '#f2f0eb',
+  card:    d => d ? {background:'#1a1a22',border:'1px solid #2a2a35',borderRadius:16} : {background:'#fff',border:'1px solid #e2ddd8',borderRadius:16},
+  glow:    d => d ? {background:'linear-gradient(135deg,#1a1a22,#1e1020)',border:'1px solid #3a2535',borderRadius:16,boxShadow:'0 0 40px rgba(249,115,22,0.08)'} : {background:'linear-gradient(135deg,#fff,#fff8f4)',border:'1px solid #fdd8c0',borderRadius:16,boxShadow:'0 4px 24px rgba(249,115,22,0.07)'},
+  navBg:   d => d ? '#0c0c10' : '#e8e4dd',
+  hdrBdr:  d => d ? '#1e1e28' : '#e2ddd8',
+  sheet:   d => d ? {background:'#1a1a22',border:'1px solid #2a2a35'} : {background:'#fff',border:'1px solid #e2ddd8'},
+  inp:     d => d ? {background:'#0f0f13',border:'1px solid #2a2a35',color:'#f0ede8'} : {background:'#f2f0eb',border:'1px solid #d4cfc9',color:'#1a1a22'},
+  sub:     d => d ? '#555' : '#aaa',
+  muted:   d => d ? '#888' : '#777',
+  divider: d => d ? '#1f1f28' : '#ede9e4',
+  track:   d => d ? '#2a2a35' : '#ddd9d4',
+  rowHov:  d => d ? '#22222e' : '#f7f5f2',
+  inactBg: d => d ? '#1a1a22' : '#eceae5',
+  inactBdr:d => d ? '#2a2a35' : '#d4cfc9',
+  inactClr:d => d ? '#666' : '#888',
+  text:    d => d ? '#f0ede8' : '#1a1a22',
+  closeBg: d => d ? '#2a2a35' : '#eceae5',
+  infoBg:  d => d ? '#0f0f13' : '#f7f5f2',
+  warnBg:  d => d ? '#1e1400' : '#fff8f0',
+  warnBdr: '#f97316',
+  warnSub: d => d ? '#8a5a20' : '#c07030',
+  okBg:    d => d ? '#1a3020' : '#e8f5ee',
+};
+
+// ── responsive ────────────────────────────────────────────────────────────────
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 900);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isDesktop;
+}
+
+// ── storage (100% local · IndexedDB) ──────────────────────────────────────────
+// Everything lives on this device: no accounts, no server. A JSON backup is
+// downloaded automatically on the first interaction of each day, because
+// browser storage can be wiped by the OS/browser.
+const LS_THEME       = 'mercado2026_theme';
+const LS_LAST_BACKUP = 'mercado2026_last_backup';
+const DB_NAME    = 'mercado2026_local';
+const DB_VERSION = 1;
+const DB_STORES  = { purchases: 'id', products_dict: 'barcode', settings: 'key' };
+const RESTORABLE_SETTINGS = ['taxonomy', 'palette'];
+
+let _dbPromise = null;
+function openDB() {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      for (const [name, keyPath] of Object.entries(DB_STORES))
+        if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => { _dbPromise = null; reject(req.error); };
+  });
+  return _dbPromise;
+}
+
+function idbTx(store, mode, fn) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, mode);
+    let result;
+    const r = fn(tx.objectStore(store));
+    if (r && 'onsuccess' in r) r.onsuccess = () => { result = r.result; };
+    tx.oncomplete = () => resolve(result);
+    tx.onerror    = () => reject(tx.error);
+    tx.onabort    = () => reject(tx.error);
+  }));
+}
+
+const dbGetAll = table => idbTx(table, 'readonly',  st => st.getAll());
+const dbGet    = (table, key) => idbTx(table, 'readonly',  st => st.get(key));
+const dbUpsert = (table, rows) => idbTx(table, 'readwrite', st => { for (const r of rows) st.put(r); });
+const dbDelete = (table, key) => idbTx(table, 'readwrite', st => { st.delete(key); });
+const dbClear  = table => idbTx(table, 'readwrite', st => { st.clear(); });
+
+async function requestPersistence() {
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch {}
+}
+
+// ── Data loaders ──────────────────────────────────────────────────────────────
+async function loadPurchases() {
+  const rows = await dbGetAll('purchases');
+  if (!rows.length) return null;
+  return rows.map(r => r.data);
+}
+
+async function savePurchases(purchases) {
+  await dbUpsert('purchases', purchases.map(p => ({ id: p.id, data: p })));
+}
+
+async function deletePurchase(id) {
+  try { await dbDelete('purchases', id); } catch(e) { console.error('deletePurchase:', e); }
+}
+
+async function deleteAllPurchases() {
+  try { await dbClear('purchases'); } catch(e) { console.error('deleteAllPurchases:', e); }
+}
+
+async function loadProductsDict() {
+  const rows = await dbGetAll('products_dict');
+  if (!rows.length) return null;
+  const dict = {};
+  for (const r of rows) dict[r.barcode] = r.data;
+  return dict;
+}
+
+async function saveProductsDict(dict) {
+  try {
+    await dbUpsert('products_dict', Object.entries(dict).map(([barcode, data]) => ({ barcode, data })));
+  } catch(e) { console.error('saveProductsDict:', e); }
+}
+
+async function loadSetting(key) {
+  try {
+    const row = await dbGet('settings', key);
+    return row ? row.value : null;
+  } catch(e) { return null; }
+}
+
+async function saveSetting(key, value) {
+  try { await dbUpsert('settings', [{ key, value }]); } catch(e) {}
+}
+
+async function loadTaxonomy() {
+  try {
+    const raw = await loadSetting('taxonomy');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { console.error('loadTaxonomy:', e); return null; }
+}
+
+async function saveTaxonomy(obj) {
+  try { await saveSetting('taxonomy', JSON.stringify(obj)); } catch(e) { console.error('saveTaxonomy:', e); }
+}
+
+// ── Backup / restore ──────────────────────────────────────────────────────────
+const localDayKey = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+};
+
+async function buildBackupPayload() {
+  const [pRows, dRows, sRows] = await Promise.all([
+    dbGetAll('purchases'), dbGetAll('products_dict'), dbGetAll('settings'),
+  ]);
+  const productsDict = {};
+  for (const r of dRows) productsDict[r.barcode] = r.data;
+  const settings = {};
+  for (const r of sRows) if (RESTORABLE_SETTINGS.includes(r.key)) settings[r.key] = r.value;
+  return {
+    app: 'mercado2026-local',
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    purchases: pRows.map(r => r.data),
+    productsDict,
+    settings,
+  };
+}
+
+function downloadJSON(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+// Older backups (purchases only) have no catalogue: rebuild it from the purchases.
+function deriveCatalogFromPurchases(ps) {
+  const out = {};
+  for (const p of ps) {
+    if (!p || !p.rawName || !(p.nombre || p.category)) continue;
+    const entry = (barcode) => ({
+      barcode, rawName: p.rawName, nombre: p.nombre || '', category: p.category || '',
+      packageSize: p.packageSize ?? null, packageSizeUnit: p.packageSizeUnit ?? null,
+    });
+    const nameKey = 'name:' + p.rawName.toLowerCase();
+    if (p.barcode && !out[p.barcode]) out[p.barcode] = entry(p.barcode);
+    if (!out[nameKey]) out[nameKey] = entry(nameKey);
+  }
+  return out;
+}
+
+// Atomic: either everything is replaced or nothing is.
+async function restoreFromBackup(data) {
+  const purchases = data.purchases;
+  if (!Array.isArray(purchases) || !purchases.every(p => p && p.id != null)) throw new Error('Backup inválido');
+  const hasCatalog = data.productsDict && Object.keys(data.productsDict).length > 0;
+  let catalogRows;
+  if (hasCatalog) {
+    catalogRows = Object.entries(data.productsDict).map(([barcode, d]) => ({ barcode, data: d }));
+  } else {
+    const existing = new Set((await dbGetAll('products_dict')).map(r => r.barcode));
+    catalogRows = Object.entries(deriveCatalogFromPurchases(purchases))
+      .filter(([k]) => !existing.has(k)).map(([barcode, d]) => ({ barcode, data: d }));
+  }
+  const db = await openDB();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(['purchases', 'products_dict', 'settings'], 'readwrite');
+    tx.oncomplete = () => resolve();
+    tx.onerror = tx.onabort = () => reject(tx.error);
+    const ps = tx.objectStore('purchases');
+    ps.clear();
+    for (const p of purchases) ps.put({ id: p.id, data: p });
+    const cs = tx.objectStore('products_dict');
+    if (hasCatalog) cs.clear();
+    for (const r of catalogRows) cs.put(r);
+    if (data.settings) {
+      const ss = tx.objectStore('settings');
+      for (const [key, value] of Object.entries(data.settings))
+        if (RESTORABLE_SETTINGS.includes(key)) ss.put({ key, value });
+    }
+  });
+}
+
+// ── constants ─────────────────────────────────────────────────────────────────
+const SIFEN_NS = 'http://ekuatia.set.gov.py/sifen/xsd';
+const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const PALETTES = {
+  default: ["#f97316","#fb923c","#fbbf24","#a3e635","#4ade80","#34d399","#22d3ee","#60a5fa","#a78bfa","#f472b6","#fb7185","#e879f9"],
+  earthy:  ["#c2783c","#a85f28","#d4a057","#8b6914","#6b8c42","#4a7c59","#7c9e6a","#b07d4a","#c49a6c","#8c6b3e","#5c7a3e","#a07850"],
+  terracotta: ["#c1440e","#e07850","#d4956a","#b5733a","#8c4a28","#e8b48a","#a0522d","#cd853f","#d2691e","#b8860b","#daa520","#c68642"],
+  forest:  ["#2d5a27","#4a7c3f","#6b9e5e","#8fbc8f","#556b2f","#6b8e23","#228b22","#3b5323","#708238","#a4ac86","#4f7942","#7caa68"],
+  desert:  ["#c19a6b","#a0785a","#8b6355","#d2b48c","#bc8f5f","#cd853f","#b8860b","#daa520","#c4a35a","#967117","#a67c52","#b8956a"],
+  ocean:   ["#1a6b8a","#2e8b9a","#4fb3c8","#1f7a8c","#3a9eaa","#5bc4d4","#0e6680","#2980b9","#1abc9c","#16a085","#2471a3","#1d8a7a"],
+};
+const getPal    = (k) => PALETTES[k]||PALETTES.earthy;
+const getPalKey = () => 'earthy'; // overridden once settings load
+let PAL = PALETTES.earthy;
+
+const PAL_NAMES = { default:'🟠 Original', earthy:'🟤 Tierra', terracotta:'🧱 Arcilla', forest:'🌿 Bosque', desert:'🏜 Adobe', ocean:'🌊 Océano' };
+const BACKUP_VERSION = 2;
+
+
+
+
+
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+const uid = () => Math.random().toString(36).slice(2,10);
+const fmt = n => { if(!n)return"—"; return`₲${Math.round(n).toLocaleString('es-PY')}`; };
+const fmtFull = n => `₲${Math.round(n).toLocaleString('es-PY')}`;
+const monthOf = d => { try{ return new Date(d+'T12:00:00').getMonth(); }catch{return 0;} };
+const yearOf  = d => { try{ return new Date(d+'T12:00:00').getFullYear(); }catch{return new Date().getFullYear();} };
+
+// Smart average: total / elapsed months (capped at today so partial months count proportionally)
+function smartAvg(purchases, selectedYear) {
+  if (!purchases.length) return { avg: 0, basis: '' };
+  const now = new Date();
+  const dates = purchases.map(p => new Date(p.date + 'T12:00:00')).filter(d => !isNaN(d));
+  if (!dates.length) return { avg: 0, basis: '' };
+  const firstDate = new Date(Math.min(...dates));
+  // End date: either end of selected year or today, whichever is earlier
+  const yearEnd = selectedYear ? new Date(selectedYear, 11, 31) : now;
+  const endDate  = yearEnd < now ? yearEnd : now;
+  // Elapsed months including partial current month as fraction
+  const elapsedMs = endDate - firstDate;
+  const elapsedMonths = Math.max(elapsedMs / (1000 * 60 * 60 * 24 * 30.44), 1/30);
+  const total = purchases.reduce((a,p) => a + p.total, 0);
+  return {
+    avg: total / elapsedMonths,
+    basis: elapsedMonths.toFixed(1) + ' meses'
+  };
+}
+
+// "What if cheapest" calculation:
+// For each month, find the cheapest price/unit among all purchases that month,
+// then compute what total would have been if that price applied to the same quantity.
+// For a single product (same friendly name): find cheapest price/unit per month
+// and calculate what total would have been at that price each month.
+function whatIfCheapest(purchases) {
+  if (!purchases.length) return null;
+  const byMonth = {};
+  for (const p of purchases) {
+    const m = monthOf(p.date);
+    if (!byMonth[m]) byMonth[m] = [];
+    const amount = p.packageSize != null ? p.qty * p.packageSize : p.qty;
+    const pricePerUnit = amount > 0 ? p.total / amount : null;
+    byMonth[m].push({ ...p, amount, pricePerUnit });
+  }
+  let actualTotal = 0, cheapestTotal = 0;
+  for (const ps of Object.values(byMonth)) {
+    const valid = ps.filter(p => p.pricePerUnit != null);
+    if (!valid.length) continue;
+    const cheapestPrice = Math.min(...valid.map(p => p.pricePerUnit));
+    const monthAmount   = valid.reduce((a,p) => a + p.amount, 0);
+    actualTotal   += ps.reduce((a,p) => a + p.total, 0);
+    cheapestTotal += cheapestPrice * monthAmount;
+  }
+  const savings = actualTotal - cheapestTotal;
+  return savings > 1 ? { actualTotal, cheapestTotal, savings, pct: (savings/actualTotal*100) } : null;
+}
+
+// For a category: sum up whatIfCheapest savings per product (friendly name),
+// NOT across all products combined (which would wrongly compare chicken vs milk prices).
+function whatIfCheapestCat(purchases) {
+  if (!purchases.length) return null;
+  // Group by friendly name
+  const byNombre = {};
+  for (const p of purchases) {
+    const key = p.nombre || p.rawName;
+    if (!byNombre[key]) byNombre[key] = [];
+    byNombre[key].push(p);
+  }
+  let totalActual = 0, totalCheapest = 0;
+  for (const ps of Object.values(byNombre)) {
+    const wic = whatIfCheapest(ps);
+    if (!wic) {
+      totalActual += ps.reduce((a,p) => a + p.total, 0);
+      totalCheapest += ps.reduce((a,p) => a + p.total, 0); // no savings possible
+    } else {
+      totalActual   += wic.actualTotal;
+      totalCheapest += wic.cheapestTotal;
+    }
+  }
+  const savings = totalActual - totalCheapest;
+  return savings > 1 ? { actualTotal: totalActual, cheapestTotal: totalCheapest, savings, pct: (savings/totalActual*100) } : null;
+}
+const today = () => new Date().toISOString().slice(0,10);
+
+function parsePackageSize(name) {
+  name = String(name);
+  const patterns = [
+    [/(\d+(?:[.,]\d+)?)\s*[Kk][Gg]/, m => [parseFloat(m[1].replace(',','.')), 'kg']],
+    [/(\d+(?:[.,]\d+)?)\s*[Gg][Rr]?\.?/, m => [parseFloat(m[1].replace(',','.')) / 1000, 'kg']],
+    [/(\d+(?:[.,]\d+)?)\s*[Ll][Tt]?\.?/, m => [parseFloat(m[1].replace(',','.')), 'L']],
+    [/(\d+(?:[.,]\d+)?)\s*[Mm][Ll]/, m => [parseFloat(m[1].replace(',','.')) / 1000, 'L']],
+    [/(\d+(?:[.,]\d+)?)\s*[Cc][Cc]/, m => [parseFloat(m[1].replace(',','.')) / 1000, 'L']],
+    [/(\d+)\s*[Rr][Oo][Ll]{2}?/, m => [parseFloat(m[1]), 'rollos']],
+  ];
+  for (const [pattern, extractor] of patterns) {
+    const m = name.match(pattern);
+    if (m) {
+      try {
+        const [val, unit] = extractor(m);
+        return [Math.round(val * 10000) / 10000, unit];
+      } catch {}
+    }
+  }
+  return [null, null];
+}
+
+function parseXML(text, productsDict) {
+  const doc = new DOMParser().parseFromString(text,'text/xml');
+  const g = (el,tag) => { const r=el.getElementsByTagNameNS(SIFEN_NS,tag); return r.length?r[0].textContent.trim():null; };
+  const gd = tag => g(doc,tag);
+  const rawDate = gd('dFeEmiDE')||gd('dFecFirma')||today();
+  const date = rawDate.slice(0,10);
+  const store = gd('dNomEmi')||'Desconocido';
+  const docNum = gd('dNumDoc')||uid();
+  const invoiceId = `inv-${docNum}-${date}`;
+  const els = doc.getElementsByTagNameNS(SIFEN_NS,'gCamItem');
+  const purchases = [];
+  for(let i=0;i<els.length;i++){
+    const el=els[i];
+    const barcode  = g(el,'dCodInt')||g(el,'dCodProd')||'';
+    const rawName  = g(el,'dDesProSer')||'Desconocido';
+    const qty      = parseFloat(g(el,'dCantProSer')||'1');
+    const unit     = g(el,'dDesUniMed')||'UNI';
+    const unitPrice= parseFloat(g(el,'dPUniProSer')||'0');
+    const total    = parseFloat(g(el,'dTotOpeItem')||'0');
+    // Auto-fill from products dictionary — check real barcode first, then name fallback
+    const nameKey     = 'name:' + rawName.toLowerCase();
+    const byBarcode   = barcode && productsDict[barcode];
+    const byName      = productsDict[nameKey];
+    const known       = byBarcode || byName;
+
+    // Try to parse package size from the raw invoice name (e.g. "600gr", "1Lt")
+    const [parsedSize, parsedUnit] = parsePackageSize(rawName);
+
+    const finalPackageSize     = known?.packageSize     ?? parsedSize;
+    const finalPackageSizeUnit = known?.packageSizeUnit ?? parsedUnit;
+
+    purchases.push({
+      id:uid(), invoiceId, date, store, rawName,
+      barcode: barcode||'',
+      category:     known ? known.category : '',
+      nombre:       known ? known.nombre   : '',
+      packageSize:     finalPackageSize,
+      packageSizeUnit: finalPackageSizeUnit,
+      qty, unit, unitPrice, total,
+      // Flag so the app knows to migrate the name-keyed catalogue entry to this real barcode
+      _migrateFromKey: (barcode && byName && !byBarcode) ? nameKey : null,
+    });
+  }
+  return {invoiceId,date,store,purchases};
+}
+
+function buildSummary(purchases) {
+  const map={};
+  for(const p of purchases){
+    const cat=p.category||'Sin categoría';
+    if(!map[cat])map[cat]={name:cat,months:Array(12).fill(0),total:0,count:0};
+    map[cat].months[monthOf(p.date)]+=p.total;
+    map[cat].total+=p.total;
+    map[cat].count++;
+  }
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+
+// ── seed data (real data from Excel) ─────────────────────────────────────────
+
+
+
+
+
+
+// ── MODAL wrapper ─────────────────────────────────────────────────────────────
+function Modal({title, onClose, children}) {
+  const d = useTheme()==='dark';
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="sheet slide" style={{...T.sheet(d)}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:20}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,flex:1,color:T.text(d)}}>{title}</div>
+          <button onClick={onClose} style={{background:T.closeBg(d),border:'none',borderRadius:8,color:T.muted(d),width:32,height:32,fontSize:16}}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── INPUT helpers ─────────────────────────────────────────────────────────────
+function Inp({value,onChange,type='text',step,placeholder,style={}}) {
+  const d = useTheme()==='dark';
+  return (
+    <input value={value} onChange={onChange} type={type} step={step} placeholder={placeholder}
+      style={{width:'100%',padding:'10px 12px',borderRadius:10,fontSize:13,border:`1px solid ${d?'#2a2a35':'#d4cfc9'}`,outline:'none',...T.inp(d),...style}}
+      onFocus={e=>e.target.style.borderColor='#f97316'}
+      onBlur={e=>e.target.style.borderColor=d?'#2a2a35':'#d4cfc9'}
+    />
+  );
+}
+function Sel({value,onChange,children,style={}}) {
+  const d = useTheme()==='dark';
+  return (
+    <select value={value} onChange={onChange}
+      style={{width:'100%',padding:'10px 12px',borderRadius:10,fontSize:13,border:`1px solid ${d?'#2a2a35':'#d4cfc9'}`,outline:'none',...T.inp(d),...style}}
+      onFocus={e=>e.target.style.borderColor='#f97316'}
+      onBlur={e=>e.target.style.borderColor=d?'#2a2a35':'#d4cfc9'}>
+      {children}
+    </select>
+  );
+}
+function FieldLabel({children}) {
+  const d = useTheme()==='dark';
+  return <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>{children}</div>;
+}
+function Btn({onClick,children,style={},variant='primary'}) {
+  const d = useTheme()==='dark';
+  const base = variant==='primary'
+    ? {background:'#f97316',color:'#0f0f13',border:'none'}
+    : variant==='danger'
+    ? {background:d?'#2a1a1a':'#fff5f5',color:'#f87171',border:`1px solid ${d?'#5a2a2a':'#fcc'}`}
+    : {background:T.inactBg(d),color:T.inactClr(d),border:`1px solid ${T.inactBdr(d)}`};
+  return (
+    <button onClick={onClick} style={{padding:'12px 0',borderRadius:10,fontSize:13,fontWeight:600,width:'100%',...base,...style}}>
+      {children}
+    </button>
+  );
+}
+
+// ── DATA HELPERS ──────────────────────────────────────────────────────────────
+// Build summary grouped by category
+function buildCatSummary(purchases) {
+  const map = {};
+  for (const p of purchases) {
+    const cat = p.category || 'Sin categoría';
+    if (!map[cat]) map[cat] = {name:cat, months:Array(12).fill(0), total:0, count:0};
+    map[cat].months[monthOf(p.date)] += p.total;
+    map[cat].total += p.total;
+    map[cat].count++;
+  }
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+
+// Build summary grouped by nombre (friendly name) within a category
+function buildNombreSummary(purchases, catName) {
+  const catPs = catName ? purchases.filter(p=>(p.category||'Sin categoría')===catName) : purchases;
+  const map = {};
+  for (const p of catPs) {
+    const key = p.nombre || p.rawName;
+    if (!map[key]) map[key] = {name:key, months:Array(12).fill(0), total:0, count:0, purchases:[]};
+    map[key].months[monthOf(p.date)] += p.total;
+    map[key].total += p.total;
+    map[key].count++;
+    map[key].purchases.push(p);
+  }
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+
+// ── EDIT PURCHASE modal ───────────────────────────────────────────────────────
+function EditModal({purchase, onSave, onDelete, onClose, allCategories}) {
+  const d = useTheme()==='dark';
+  const [cat,setCat]     = useState(purchase.category||'');
+  const [nombre,setNombre] = useState(purchase.nombre||'');
+  const [newCat,setNewCat] = useState('');
+  const [useNew,setUseNew] = useState(false);
+  const [qty,setQty]     = useState(String(purchase.qty));
+  const [unit,setUnit]   = useState(purchase.unit||'UNI');
+  const [total,setTotal] = useState(String(purchase.total));
+  const [date,setDate]   = useState(purchase.date||today());
+  const [store,setStore] = useState(purchase.store||'');
+  const [pkgSize,setPkgSize] = useState(purchase.packageSize!=null?String(purchase.packageSize):'');
+  const [pkgUnit,setPkgUnit] = useState(purchase.packageSizeUnit||'');
+
+  const save = () => {
+    const finalCat = useNew ? newCat.trim() : cat;
+    if (!finalCat) return alert('Seleccioná una categoría');
+    onSave({
+      ...purchase,
+      category: finalCat,
+      nombre,
+      qty: parseFloat(qty) || purchase.qty,
+      unit,
+      total: parseFloat(total) || purchase.total,
+      date, store,
+      packageSize: pkgSize !== '' ? parseFloat(pkgSize) : null,
+      packageSizeUnit: pkgUnit || null,
+    });
+  };
+
+  return (
+    <Modal title="Editar compra" onClose={onClose}>
+      <div style={{background:T.infoBg(d),borderRadius:10,padding:'11px 14px',marginBottom:18,border:`1px solid ${T.inactBdr(d)}`}}>
+        <div style={{fontSize:11,color:T.muted(d),marginBottom:2}}>Nombre en factura</div>
+        <div style={{fontSize:13,color:'#f97316',fontWeight:600}}>{purchase.rawName}</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+        <div><FieldLabel>Fecha</FieldLabel><Inp value={date} onChange={e=>setDate(e.target.value)} type="date"/></div>
+        <div><FieldLabel>Tienda</FieldLabel><Inp value={store} onChange={e=>setStore(e.target.value)} placeholder="Local"/></div>
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Categoría</FieldLabel>
+        <Sel value={useNew?'__new__':cat} onChange={e=>{if(e.target.value==='__new__'){setUseNew(true);setCat('');}else{setUseNew(false);setCat(e.target.value);}}}>
+          <option value="">— Seleccionar —</option>
+          {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
+          <option value="__new__">+ Nueva categoría…</option>
+        </Sel>
+        {useNew && <Inp value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="Nombre de nueva categoría" style={{marginTop:8,borderColor:'#f97316'}}/>}
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Nombre friendly</FieldLabel>
+        <NombreAutocomplete value={nombre} onChange={v=>{
+          setNombre(v);
+          if(NOMBRE_TO_CAT[v]) setCat(NOMBRE_TO_CAT[v]);
+        }}/>
+        {nombre && NOMBRE_TO_CAT[nombre] && (
+          <div style={{fontSize:11,color:'#4ade80',marginTop:5}}>→ Categoría: {NOMBRE_TO_CAT[nombre]}</div>
+        )}
+        <div style={{fontSize:10,color:T.sub(d),marginTop:4}}>Agrupa productos distintos bajo el mismo nombre para ver totales</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+        <div><FieldLabel>Cantidad</FieldLabel><Inp value={qty} onChange={e=>setQty(e.target.value)} type="number" step="0.001"/></div>
+        <div>
+          <FieldLabel>Unidad</FieldLabel>
+          <Sel value={unit} onChange={e=>setUnit(e.target.value)}>
+            {['UNI','kg','g','L','ml'].map(u=><option key={u}>{u}</option>)}
+          </Sel>
+        </div>
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Total (₲)</FieldLabel>
+        <Inp value={total} onChange={e=>setTotal(e.target.value)} type="number"/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+        <div>
+          <FieldLabel>Tamaño del envase</FieldLabel>
+          <Inp value={pkgSize} onChange={e=>setPkgSize(e.target.value)} type="number" step="0.001" placeholder="ej: 0.5"/>
+        </div>
+        <div>
+          <FieldLabel>Unidad envase</FieldLabel>
+          <Sel value={pkgUnit} onChange={e=>setPkgUnit(e.target.value)}>
+            <option value="">— N/A —</option>
+            {['kg','g','L','ml','rollos','UNI'].map(u=><option key={u}>{u}</option>)}
+          </Sel>
+        </div>
+      </div>
+
+      <div style={{display:'flex',gap:10}}>
+        <Btn onClick={save} style={{flex:2}}>Guardar cambios</Btn>
+        <Btn onClick={()=>{ if(confirm('¿Eliminar esta compra?')) onDelete(purchase.id); }} variant="danger" style={{flex:1}}>Eliminar</Btn>
+      </div>
+    </Modal>
+  );
+}
+
+
+
+// ── COMPARE NOMBRES ───────────────────────────────────────────────────────────
+function computeNombreSeries(purchases, nombreName) {
+  // Returns {gastoByMonth, cantByMonth, unit, hasPkgSize, total, totalCant}
+  const ps = purchases.filter(p => (p.nombre || p.rawName) === nombreName);
+  const gasto = Array(12).fill(0);
+  const cant  = Array(12).fill(0);
+  const hasPkgSize = ps.some(p => p.packageSize != null);
+  const unit = hasPkgSize
+    ? (ps.find(p=>p.packageSizeUnit)?.packageSizeUnit || 'UNI')
+    : (ps[0]?.unit || 'UNI');
+  for (const p of ps) {
+    const m = monthOf(p.date);
+    gasto[m] += p.total;
+    const amount = (p.packageSize != null) ? p.qty * p.packageSize : p.qty;
+    cant[m] += amount;
+  }
+  const total = gasto.reduce((a,b)=>a+b,0);
+  const totalCant = cant.reduce((a,b)=>a+b,0);
+  return {
+    gasto, cant, unit, hasPkgSize,
+    total, totalCant,
+    avgPricePerUnit: totalCant > 0 ? total / totalCant : null,
+    count: ps.length,
+  };
+}
+
+function CompareModal({purchases, initialA, onClose}) {
+  const d = useTheme()==='dark';
+  const [nameA, setNameA] = useState(initialA || '');
+  const [nameB, setNameB] = useState('');
+  const [metric, setMetric] = useState('gasto'); // gasto | cantidad
+
+  const allNombresInUse = useMemo(() => {
+    const set = new Set(purchases.map(p => p.nombre || p.rawName));
+    return [...set].sort((a,b)=>a.localeCompare(b,'es'));
+  }, [purchases]);
+
+  const seriesA = useMemo(() => nameA ? computeNombreSeries(purchases, nameA) : null, [purchases, nameA]);
+  const seriesB = useMemo(() => nameB ? computeNombreSeries(purchases, nameB) : null, [purchases, nameB]);
+
+  const dataA = seriesA ? (metric==='gasto' ? seriesA.gasto : seriesA.cant) : null;
+  const dataB = seriesB ? (metric==='gasto' ? seriesB.gasto : seriesB.cant) : null;
+  const maxVal = Math.max(...(dataA||[0]), ...(dataB||[0]), 1);
+
+  const activeMonths = useMemo(() => {
+    const idxs = new Set();
+    if (dataA) dataA.forEach((v,i)=>{ if(v>0) idxs.add(i); });
+    if (dataB) dataB.forEach((v,i)=>{ if(v>0) idxs.add(i); });
+    return [...idxs].sort((a,b)=>a-b);
+  }, [dataA, dataB]);
+
+  const fmtVal = (v, series) => {
+    if (metric === 'gasto') return fmtFull(v);
+    if (!series) return String(v);
+    return `${v % 1 === 0 ? v : v.toFixed(2)} ${series.hasPkgSize ? series.unit : series.unit}`;
+  };
+
+  const picker = (value, setValue, label, color) => (
+    <div style={{flex:1}}>
+      <FieldLabel>{label}</FieldLabel>
+      <Sel value={value} onChange={e=>setValue(e.target.value)}>
+        <option value="">— Elegir —</option>
+        {allNombresInUse.map(n => <option key={n} value={n}>{n}</option>)}
+      </Sel>
+    </div>
+  );
+
+  return (
+    <Modal title="Comparar productos" onClose={onClose}>
+      <div style={{display:'flex',gap:10,marginBottom:16}}>
+        {picker(nameA, setNameA, 'Producto A', '#f97316')}
+        {picker(nameB, setNameB, 'Producto B', '#60a5fa')}
+      </div>
+
+      <div style={{display:'flex',gap:8,marginBottom:18}}>
+        {[['gasto','💰 Gasto'],['cantidad','📦 Cantidad']].map(([k,l]) => (
+          <button key={k} onClick={()=>setMetric(k)}
+            style={{flex:1,padding:'8px 0',borderRadius:9,fontSize:12,fontWeight:600,
+              border:`1px solid ${metric===k?'#f97316':T.inactBdr(d)}`,
+              background:metric===k?'#f97316':T.inactBg(d),
+              color:metric===k?'#0f0f13':T.inactClr(d)}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {!nameA && !nameB && (
+        <div style={{textAlign:'center',padding:'30px 0',color:T.sub(d),fontSize:13}}>
+          Elegí dos productos para comparar su evolución mes a mes
+        </div>
+      )}
+
+      {(nameA || nameB) && (
+        <>
+          {/* Price per unit comparison — the headline metric for "is this swap cheaper" */}
+          {seriesA && seriesB && seriesA.avgPricePerUnit != null && seriesB.avgPricePerUnit != null && (
+            <div style={{...T.glow(d),padding:18,marginBottom:16}}>
+              <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:14}}>
+                Precio promedio por unidad
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                <div>
+                  <div style={{fontSize:11,color:'#f97316',fontWeight:600,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameA}</div>
+                  <div style={{fontSize:20,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text(d)}}>{fmtFull(seriesA.avgPricePerUnit)}</div>
+                  <div style={{fontSize:10,color:T.sub(d),marginTop:2}}>por {seriesA.unit}</div>
+                </div>
+                <div>
+                  <div style={{fontSize:11,color:'#60a5fa',fontWeight:600,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameB}</div>
+                  <div style={{fontSize:20,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text(d)}}>{fmtFull(seriesB.avgPricePerUnit)}</div>
+                  <div style={{fontSize:10,color:T.sub(d),marginTop:2}}>por {seriesB.unit}</div>
+                </div>
+              </div>
+              {seriesA.unit === seriesB.unit ? (() => {
+                const diff = seriesB.avgPricePerUnit - seriesA.avgPricePerUnit;
+                const pct = seriesA.avgPricePerUnit > 0 ? (diff / seriesA.avgPricePerUnit * 100) : 0;
+                const cheaper = diff < 0 ? nameB : (diff > 0 ? nameA : null);
+                return (
+                  <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${T.inactBdr(d)}`,fontSize:13,color:T.text(d)}}>
+                    {cheaper ? (
+                      <><strong style={{color:'#4ade80'}}>{cheaper}</strong> es más barato por {seriesA.unit} — diferencia de {fmtFull(Math.abs(diff))} ({Math.abs(pct).toFixed(0)}%)</>
+                    ) : (
+                      <>Mismo precio por {seriesA.unit}</>
+                    )}
+                  </div>
+                );
+              })() : (
+                <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${T.inactBdr(d)}`,fontSize:11,color:T.sub(d)}}>
+                  Unidades distintas ({seriesA.unit} vs {seriesB.unit}) — comparación de precio no directamente comparable
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Totals comparison */}
+          <div style={{display:'grid',gridTemplateColumns: nameB ? '1fr 1fr' : '1fr', gap:10,marginBottom:16}}>
+            {seriesA && (
+              <div style={{...T.card(d),padding:14,borderColor:'#f97316'}}>
+                <div style={{fontSize:11,color:'#f97316',fontWeight:600,marginBottom:6,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameA}</div>
+                <div style={{fontSize:18,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text(d)}}>
+                  {metric==='gasto' ? fmtFull(seriesA.total) : `${seriesA.totalCant % 1===0?seriesA.totalCant:seriesA.totalCant.toFixed(2)} ${seriesA.unit}`}
+                </div>
+                <div style={{fontSize:10,color:T.sub(d),marginTop:3}}>{seriesA.count} compras</div>
+              </div>
+            )}
+            {seriesB && (
+              <div style={{...T.card(d),padding:14,borderColor:'#60a5fa'}}>
+                <div style={{fontSize:11,color:'#60a5fa',fontWeight:600,marginBottom:6,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameB}</div>
+                <div style={{fontSize:18,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text(d)}}>
+                  {metric==='gasto' ? fmtFull(seriesB.total) : `${seriesB.totalCant % 1===0?seriesB.totalCant:seriesB.totalCant.toFixed(2)} ${seriesB.unit}`}
+                </div>
+                <div style={{fontSize:10,color:T.sub(d),marginTop:3}}>{seriesB.count} compras</div>
+              </div>
+            )}
+          </div>
+
+          {/* Difference banner, only when both selected */}
+          {seriesA && seriesB && (() => {
+            const valA = metric==='gasto' ? seriesA.total : seriesA.totalCant;
+            const valB = metric==='gasto' ? seriesB.total : seriesB.totalCant;
+            const diff = valB - valA;
+            const pct = valA > 0 ? (diff/valA*100) : 0;
+            return (
+              <div style={{background:d?'#1a1a22':'#f7f5f2',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:12,color:T.text(d),border:`1px solid ${T.inactBdr(d)}`}}>
+                {nameB} {diff>=0?'es':'es'} <strong style={{color:diff>=0?'#f87171':'#4ade80'}}>{diff>=0?'+':''}{metric==='gasto'?fmtFull(Math.abs(diff)):`${Math.abs(diff).toFixed(2)} ${seriesB.unit}`}</strong>
+                {' '}{diff>=0?'más':'menos'} que {nameA} ({pct>=0?'+':''}{pct.toFixed(0)}%)
+              </div>
+            );
+          })()}
+
+          {/* Combined monthly total, only when both selected */}
+          {seriesA && seriesB && (
+            <div style={{...T.glow(d),padding:16,marginBottom:16}}>
+              <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>
+                Total combinado ({nameA} + {nameB})
+              </div>
+              <div style={{fontSize:22,fontWeight:800,fontFamily:"'Syne',sans-serif",color:T.text(d)}}>
+                {metric==='gasto'
+                  ? fmtFull(seriesA.total + seriesB.total)
+                  : (seriesA.unit === seriesB.unit
+                      ? `${(seriesA.totalCant+seriesB.totalCant) % 1===0 ? (seriesA.totalCant+seriesB.totalCant) : (seriesA.totalCant+seriesB.totalCant).toFixed(2)} ${seriesA.unit}`
+                      : <span style={{fontSize:14,color:T.sub(d)}}>Unidades distintas, no se puede sumar</span>
+                    )
+                }
+              </div>
+            </div>
+          )}
+
+          {/* Stacked horizontal bar comparison per month, dashboard-style */}
+          <div style={{...T.card(d),padding:18}}>
+            <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>
+              {metric==='gasto' ? 'Gasto' : 'Cantidad'} por mes
+            </div>
+            <div style={{display:'flex',gap:14,marginBottom:16,fontSize:10,color:T.sub(d)}}>
+              {seriesA && <div style={{display:'flex',alignItems:'center',gap:5}}><div style={{width:8,height:8,borderRadius:2,background:'#f97316'}}/>{nameA}</div>}
+              {seriesB && <div style={{display:'flex',alignItems:'center',gap:5}}><div style={{width:8,height:8,borderRadius:2,background:'#60a5fa'}}/>{nameB}</div>}
+            </div>
+            {activeMonths.length===0 && <div style={{fontSize:13,color:T.sub(d)}}>Sin datos</div>}
+            {(() => {
+              // Combined max so bar widths are comparable across months (A+B together)
+              const maxCombined = Math.max(...activeMonths.map(i => (dataA?.[i]||0) + (dataB?.[i]||0)), 1);
+              return activeMonths.map(i => {
+                const valA = dataA ? dataA[i] : 0;
+                const valB = dataB ? dataB[i] : 0;
+                const combined = valA + valB;
+                const pctA = (valA / maxCombined) * 100;
+                const pctB = (valB / maxCombined) * 100;
+                const combinedLabel = metric==='gasto'
+                  ? fmtFull(combined)
+                  : (seriesA && seriesB && seriesA.unit===seriesB.unit ? `${combined.toFixed(2)} ${seriesA.unit}` : (dataA && !dataB ? fmtVal(valA,seriesA) : (dataB && !dataA ? fmtVal(valB,seriesB) : '—')));
+                return (
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                    <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{MONTHS[i]}</div>
+                    <div style={{flex:1,height:10,background:T.track(d),borderRadius:5,overflow:'hidden',display:'flex'}}>
+                      {valA > 0 && <div style={{height:'100%',width:`${pctA}%`,background:'#f97316'}}/>}
+                      {valB > 0 && <div style={{height:'100%',width:`${pctB}%`,background:'#60a5fa'}}/>}
+                    </div>
+                    <div style={{width:100,fontSize:11,color:T.text(d),textAlign:'right'}}>{combinedLabel}</div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+
+// ── QR SCANNER MODAL ──────────────────────────────────────────────────────────
+function QRScanModal({onClose}) {
+  const d = useTheme()==='dark';
+  const videoRef = useRef();
+  const rafRef   = useRef();
+  const fileRef  = useRef();
+  const [stream,  setStream]  = useState(null);
+  const [mode,    setMode]    = useState('camera'); // camera | image
+  const [found,   setFound]   = useState(null);     // detected QR URL
+  const [camErr,  setCamErr]  = useState('');
+
+  const stopCamera = () => {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    cancelAnimationFrame(rafRef.current);
+  };
+
+  // Start camera
+  useEffect(() => {
+    if (mode !== 'camera') return;
+    let active = true;
+    async function start() {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:720} }
+        });
+        if (!active) { s.getTracks().forEach(t=>t.stop()); return; }
+        setStream(s);
+        if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play(); }
+      } catch(e) {
+        setCamErr('No se pudo acceder a la cámara.');
+        setMode('image');
+      }
+    }
+    start();
+    return () => { active = false; };
+  }, [mode]);
+
+  // Stop camera when not needed
+  useEffect(() => {
+    if (mode !== 'camera' || found) stopCamera();
+  }, [mode, found]);
+
+  // QR detection loop
+  useEffect(() => {
+    if (mode !== 'camera' || found) return;
+    if (!('BarcodeDetector' in window)) { setMode('image'); return; }
+    const detector = new BarcodeDetector({ formats: ['qr_code'] });
+    let active = true;
+    async function tick() {
+      if (!active || !videoRef.current || videoRef.current.readyState < 2) {
+        rafRef.current = requestAnimationFrame(tick); return;
+      }
+      try {
+        const codes = await detector.detect(videoRef.current);
+        for (const c of codes) {
+          if (c.rawValue.includes('ekuatia.set.gov.py')) {
+            active = false;
+            cancelAnimationFrame(rafRef.current);
+            setFound(c.rawValue);
+            stopCamera();
+            return;
+          }
+        }
+      } catch {}
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { active = false; cancelAnimationFrame(rafRef.current); };
+  }, [mode, found]);
+
+  // Read QR from uploaded image
+  const handleImageFile = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (!('BarcodeDetector' in window)) {
+      alert('Tu navegador no soporta lectura de QR desde imagen. Usá Chrome.'); return;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      const codes  = await new BarcodeDetector({ formats: ['qr_code'] }).detect(bitmap);
+      const ekuatia = codes.find(c => c.rawValue.includes('ekuatia.set.gov.py'));
+      if (ekuatia) { setFound(ekuatia.rawValue); }
+      else if (codes.length) { alert('QR detectado pero no pertenece a ekuatia: ' + codes[0].rawValue.slice(0,80)); }
+      else { alert('No se detectó ningún código QR en la imagen.'); }
+    } catch(e) { alert('Error al leer la imagen: ' + e.message); }
+  };
+
+  return (
+    <Modal title="Escanear factura QR" onClose={()=>{ stopCamera(); onClose(); }}>
+
+      {!found && mode==='camera' && (
+        <div>
+          {camErr && <div style={{fontSize:12,color:'#f87171',marginBottom:10,textAlign:'center'}}>{camErr}</div>}
+          <div style={{position:'relative',borderRadius:14,overflow:'hidden',background:'#000',marginBottom:12}}>
+            <video ref={videoRef} style={{width:'100%',display:'block',maxHeight:260,objectFit:'cover'}} playsInline muted/>
+            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+              <div style={{width:170,height:170,borderRadius:12,
+                boxShadow:'0 0 0 9999px rgba(0,0,0,0.45)',border:'2px solid #f97316'}}/>
+            </div>
+          </div>
+          <div style={{fontSize:11,color:T.sub(d),textAlign:'center',marginBottom:12}}>
+            Apuntá la cámara al QR de la factura
+          </div>
+          <Btn onClick={()=>{ stopCamera(); setMode('image'); }} variant="ghost">
+            📁 Usar imagen en cambio
+          </Btn>
+        </div>
+      )}
+
+      {!found && mode==='image' && (
+        <div>
+          <div style={{border:`2px dashed ${T.inactBdr(d)}`,borderRadius:14,padding:'32px 20px',
+            textAlign:'center',cursor:'pointer',marginBottom:12,transition:'border-color 0.2s'}}
+            onClick={()=>fileRef.current.click()}
+            onMouseEnter={e=>e.currentTarget.style.borderColor='#f97316'}
+            onMouseLeave={e=>e.currentTarget.style.borderColor=d?'#2a2a35':'#d4cfc9'}>
+            <div style={{fontSize:36,marginBottom:8}}>🔍</div>
+            <div style={{fontSize:13,color:T.text(d),marginBottom:4}}>Seleccionar foto del QR</div>
+            <div style={{fontSize:11,color:T.sub(d)}}>Una foto clara del código QR de la factura</div>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleImageFile} style={{display:'none'}}/>
+          <Btn onClick={()=>{ setCamErr(''); setMode('camera'); }} variant="ghost">
+            📷 Usar cámara en cambio
+          </Btn>
+        </div>
+      )}
+
+      {found && (
+        <div>
+          <div style={{...T.card(d),padding:16,marginBottom:16,borderColor:'#4ade80'}}>
+            <div style={{fontSize:13,color:'#4ade80',fontWeight:600,marginBottom:8}}>✓ QR detectado</div>
+            <div style={{fontSize:11,color:T.sub(d),wordBreak:'break-all',lineHeight:1.5}}>
+              {found.slice(0,80)}…
+            </div>
+          </div>
+          <div style={{background:d?'#1a2a1a':'#f0faf3',border:`1px solid ${d?'#2a4a2a':'#b8e8c8'}`,
+            borderRadius:12,padding:'12px 16px',marginBottom:20,fontSize:12,color:d?'#86efac':'#2a7a4a',lineHeight:1.6}}>
+            Al abrir ekuatia:<br/>
+            1. Ingresá el número de cédula del receptor<br/>
+            2. Marcá "No soy robot"<br/>
+            3. Tocá <strong>Descargar XML</strong><br/>
+            4. Volvé aquí y usá el botón <strong>+ XML</strong> para importarlo
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <Btn onClick={()=>{ setFound(null); setMode('camera'); }} variant="ghost" style={{flex:1}}>
+              Volver a escanear
+            </Btn>
+            <Btn onClick={()=>{ window.open(found, '_blank'); }} style={{flex:2}}>
+              🌐 Abrir en ekuatia
+            </Btn>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+
+// ── ADD MANUAL PURCHASE modal ─────────────────────────────────────────────────
+function AddModal({onAdd, onClose, allCategories, productsDict}) {
+  const d = useTheme()==='dark';
+  const [rawName,setRawName] = useState('');
+  const [cat,setCat]         = useState('');
+  const [nombre,setNombre]   = useState('');
+  const [newCat,setNewCat]   = useState('');
+  const [useNew,setUseNew]   = useState(false);
+  const [qty,setQty]         = useState('1');
+  const [unit,setUnit]       = useState('UNI');
+  const [total,setTotal]     = useState('');
+  const [date,setDate]       = useState(today());
+  const [store,setStore]     = useState('');
+  const [pkgSize,setPkgSize] = useState('');
+  const [pkgUnit,setPkgUnit] = useState('');
+
+  const productOptions = useMemo(()=>{
+    const dict = productsDict || {};
+    return [...new Set(Object.values(dict).map(p=>p.rawName))].sort((a,b)=>a.localeCompare(b,'es'));
+  },[productsDict]);
+
+  const productSubtext = useMemo(()=>{
+    const dict = productsDict || {};
+    const map = {};
+    for(const p of Object.values(dict)) map[p.rawName] = p.nombre || '';
+    return map;
+  },[productsDict]);
+
+  // When picking an existing raw product name, auto-fill nombre/category/package info
+  const handleRawNameChange = v => {
+    setRawName(v);
+    const dict = productsDict || {};
+    const match = Object.values(dict).find(p => p.rawName === v);
+    if (match) {
+      if (match.nombre) { setNombre(match.nombre); setUseNew(false); if(NOMBRE_TO_CAT[match.nombre]) setCat(NOMBRE_TO_CAT[match.nombre]); }
+      if (match.category) setCat(match.category);
+      if (match.packageSize != null) setPkgSize(String(match.packageSize));
+      if (match.packageSizeUnit) setPkgUnit(match.packageSizeUnit);
+    }
+  };
+
+  const save = () => {
+    const finalCat = useNew ? newCat.trim() : cat;
+    if (!rawName.trim()) return alert('Ingresá el nombre del producto');
+    if (!finalCat) return alert('Seleccioná una categoría');
+    if (!total || parseFloat(total) <= 0) return alert('Ingresá el monto total');
+
+    const barcode = 'name:' + rawName.trim().toLowerCase();
+    onAdd({
+      id: uid(),
+      invoiceId: 'manual-' + uid(),
+      date, store: store.trim() || 'Manual',
+      rawName: rawName.trim(),
+      barcode,
+      category: finalCat,
+      nombre: nombre || finalCat,
+      qty: parseFloat(qty) || 1,
+      unit,
+      unitPrice: parseFloat(total) / (parseFloat(qty) || 1),
+      total: parseFloat(total),
+      packageSize: pkgSize ? parseFloat(pkgSize) : null,
+      packageSizeUnit: pkgUnit || null,
+    });
+  };
+
+  return (
+    <Modal title="Agregar compra manual" onClose={onClose}>
+      <div style={{fontSize:11,color:T.sub(d),marginBottom:16,padding:'10px 12px',background:T.infoBg(d),borderRadius:8,border:`1px solid ${T.inactBdr(d)}`}}>
+        💡 Para supermercados sin factura electrónica (XML)
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Nombre del producto (como en el recibo)</FieldLabel>
+        <Autocomplete
+          value={rawName}
+          onChange={handleRawNameChange}
+          options={productOptions}
+          getSubtext={n=>productSubtext[n]}
+          placeholder="ej: Yoghurt Trebol 1Lt"
+        />
+        <div style={{fontSize:10,color:T.sub(d),marginTop:4}}>Elegí uno existente para autocompletar, o escribí uno nuevo</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+        <div><FieldLabel>Fecha</FieldLabel><Inp value={date} onChange={e=>setDate(e.target.value)} type="date"/></div>
+        <div><FieldLabel>Tienda</FieldLabel><Inp value={store} onChange={e=>setStore(e.target.value)} placeholder="Local"/></div>
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Nombre friendly</FieldLabel>
+        <NombreAutocomplete value={nombre} onChange={v=>{
+          setNombre(v);
+          if(NOMBRE_TO_CAT[v]){ setCat(NOMBRE_TO_CAT[v]); setUseNew(false); }
+        }}/>
+        {nombre && NOMBRE_TO_CAT[nombre] && (
+          <div style={{fontSize:11,color:'#4ade80',marginTop:5}}>→ Categoría: {NOMBRE_TO_CAT[nombre]}</div>
+        )}
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Categoría</FieldLabel>
+        <Sel value={useNew?'__new__':cat} onChange={e=>{if(e.target.value==='__new__'){setUseNew(true);setCat('');}else{setUseNew(false);setCat(e.target.value);}}}>
+          <option value="">— Seleccionar —</option>
+          {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
+          <option value="__new__">+ Nueva categoría…</option>
+        </Sel>
+        {useNew && <Inp value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="Nombre de nueva categoría" style={{marginTop:8,borderColor:'#f97316'}}/>}
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+        <div><FieldLabel>Cantidad</FieldLabel><Inp value={qty} onChange={e=>setQty(e.target.value)} type="number" step="0.001"/></div>
+        <div>
+          <FieldLabel>Unidad</FieldLabel>
+          <Sel value={unit} onChange={e=>setUnit(e.target.value)}>
+            {['UNI','kg','g','L','ml'].map(u=><option key={u}>{u}</option>)}
+          </Sel>
+        </div>
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Total (₲)</FieldLabel>
+        <Inp value={total} onChange={e=>setTotal(e.target.value)} type="number" placeholder="ej: 25000"/>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+        <div>
+          <FieldLabel>Tamaño del envase</FieldLabel>
+          <Inp value={pkgSize} onChange={e=>setPkgSize(e.target.value)} type="number" step="0.001" placeholder="ej: 0.5"/>
+        </div>
+        <div>
+          <FieldLabel>Unidad envase</FieldLabel>
+          <Sel value={pkgUnit} onChange={e=>setPkgUnit(e.target.value)}>
+            <option value="">— N/A —</option>
+            {['kg','g','L','ml','rollos','UNI'].map(u=><option key={u}>{u}</option>)}
+          </Sel>
+        </div>
+      </div>
+
+      <Btn onClick={save}>Agregar compra</Btn>
+    </Modal>
+  );
+}
+
+// ── XML IMPORT modal ──────────────────────────────────────────────────────────
+function ImportModal({onImport, onClose, usedIds: initialUsedIds, productsDict, productsDictRef}) {
+  const d = useTheme()==='dark';
+  const [step, setStep]       = useState('pick');
+  const [parsed, setParsed]   = useState(null);   // single XML result
+  const [batch, setBatch]     = useState(null);   // ZIP batch results
+  const [err, setErr]         = useState('');
+  const [progress, setProgress] = useState('');
+  const ref = useRef();
+
+  const seenInBatch = useRef(new Set());
+  // Live usedIds that accumulates as imports happen in this session
+  const liveUsedIds = useRef(new Set(initialUsedIds));
+
+  const processXML = (text, filename='') => {
+    const result = parseXML(text, productsDictRef ? productsDictRef.current : productsDict);
+    if (!result.purchases.length) return { skipped: true, reason: 'Sin ítems', filename };
+    if (liveUsedIds.current.has(result.invoiceId)) return { skipped: true, reason: 'Ya importada', filename };
+    if (seenInBatch.current.has(result.invoiceId)) return { skipped: true, reason: 'Duplicada en ZIP', filename };
+    seenInBatch.current.add(result.invoiceId);
+    liveUsedIds.current.add(result.invoiceId);
+    return { ...result, filename };
+  };
+
+  const handleFile = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    setErr(''); setProgress('');
+    try {
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        // ── ZIP: extract all XMLs ──────────────────────────────────────────
+        setProgress('Leyendo ZIP…');
+        const zip = await JSZip.loadAsync(file);
+        const xmlFiles = Object.entries(zip.files).filter(([name, f]) =>
+          !f.dir && name.toLowerCase().endsWith('.xml')
+        );
+        if (!xmlFiles.length) { setErr('No se encontraron archivos XML en el ZIP.'); setProgress(''); return; }
+        setProgress(`Procesando ${xmlFiles.length} archivos…`);
+        const results = [];
+        let done = 0;
+        for (const [name, zipFile] of xmlFiles) {
+          const text = await zipFile.async('text');
+          try {
+            const r = processXML(text, name);
+            results.push(r);
+          } catch {
+            results.push({ skipped: true, reason: 'XML inválido', filename: name });
+          }
+          done++;
+          setProgress(`Procesando ${done}/${xmlFiles.length}…`);
+        }
+        setBatch(results);
+        setStep('batch-review');
+        setProgress('');
+      } else {
+        // ── Single XML ─────────────────────────────────────────────────────
+        const text = await file.text();
+        const result = processXML(text, file.name);
+        if (result.skipped) { setErr(result.reason === 'Ya importada' ? 'Esta factura ya fue importada.' : 'No se encontraron ítems en el XML.'); return; }
+        setParsed(result); setStep('review');
+      }
+    } catch(e) { setErr('No se pudo leer el archivo: ' + e.message); setProgress(''); }
+  };
+
+  const confirmSingle = () => { onImport(parsed); setStep('done'); };
+
+  const confirmBatch = async () => {
+    const valid = batch.filter(r => !r.skipped);
+    // Combine all purchases from all invoices into one array and import atomically
+    const allPurchases = valid.flatMap(r => r.purchases);
+    await onImport({ purchases: allPurchases, isBatch: true });
+    setStep('done');
+  };
+
+  const bdr = d ? '#2a2a35' : '#d4cfc9';
+  const validBatch  = batch ? batch.filter(r => !r.skipped) : [];
+  const skippedBatch = batch ? batch.filter(r => r.skipped) : [];
+  const totalItems   = validBatch.reduce((a,r) => a + r.purchases.length, 0);
+  const totalAmount  = validBatch.reduce((a,r) => a + r.purchases.reduce((b,p) => b+p.total, 0), 0);
+
+  return (
+    <Modal title="Importar facturas XML" onClose={onClose}>
+
+      {step==='pick' && (
+        <>
+          <div style={{border:`2px dashed ${bdr}`,borderRadius:14,padding:'36px 20px',textAlign:'center',cursor:'pointer',marginBottom:14,transition:'border-color 0.2s'}}
+            onClick={()=>ref.current.click()}
+            onMouseEnter={e=>e.currentTarget.style.borderColor='#f97316'}
+            onMouseLeave={e=>e.currentTarget.style.borderColor=bdr}>
+            <div style={{fontSize:40,marginBottom:10}}>📄</div>
+            <div style={{fontSize:14,color:T.text(d),marginBottom:4}}>Seleccionar archivo</div>
+            <div style={{fontSize:11,color:T.sub(d)}}>XML individual · o ZIP con múltiples XMLs</div>
+          </div>
+          <input ref={ref} type="file" accept=".xml,.zip" onChange={handleFile} style={{display:'none'}}/>
+          {progress && <div style={{fontSize:12,color:'#60a5fa',padding:'8px 12px',background:d?'#1a2030':'#e8f0ff',borderRadius:8,textAlign:'center'}}>{progress}</div>}
+          {err && <div style={{color:'#f87171',fontSize:12,padding:'10px 12px',background:d?'#2a1a1a':'#fff5f5',borderRadius:8,border:'1px solid #5a2a2a'}}>{err}</div>}
+        </>
+      )}
+
+      {step==='review' && parsed && (
+        <>
+          <div style={{background:T.infoBg(d),borderRadius:12,padding:'13px 16px',marginBottom:14,border:`1px solid ${T.inactBdr(d)}`}}>
+            <div style={{fontSize:14,color:'#f97316',fontWeight:600}}>{parsed.store}</div>
+            <div style={{fontSize:11,color:T.sub(d),marginTop:3}}>{parsed.date} · {parsed.purchases.length} ítems · {fmtFull(parsed.purchases.reduce((a,p)=>a+p.total,0))}</div>
+            <div style={{fontSize:11,marginTop:4}}>
+              <span style={{color:'#4ade80'}}>✓ {parsed.purchases.filter(p=>p.nombre).length} reconocidos</span>
+              {parsed.purchases.filter(p=>!p.nombre).length>0 && <span style={{color:'#f97316',marginLeft:8}}>⚠ {parsed.purchases.filter(p=>!p.nombre).length} sin asignar</span>}
+            </div>
+          </div>
+          <div style={{maxHeight:220,overflowY:'auto',borderRadius:10,border:`1px solid ${T.inactBdr(d)}`,marginBottom:14}}>
+            {parsed.purchases.map((p,i)=>(
+              <div key={i} style={{display:'flex',gap:10,padding:'10px 14px',borderBottom:i<parsed.purchases.length-1?`1px solid ${T.divider(d)}`:'none',alignItems:'center'}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,color:T.text(d),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.rawName}</div>
+                  <div style={{display:'flex',gap:5,marginTop:2}}>
+                    {p.nombre ? <span className="badge" style={{background:T.okBg(d),color:'#4ade80'}}>✓ {p.nombre}</span>
+                      : <span className="badge" style={{background:d?'#2a1500':'#fff3e0',color:'#f97316'}}>⚠ Sin asignar</span>}
+                  </div>
+                </div>
+                <div style={{fontSize:12,color:'#f97316',flexShrink:0,fontWeight:600}}>{fmtFull(p.total)}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <Btn onClick={()=>setStep('pick')} variant="ghost" style={{flex:1}}>Cancelar</Btn>
+            <Btn onClick={confirmSingle} style={{flex:2}}>Importar {parsed.purchases.length} ítems ✓</Btn>
+          </div>
+        </>
+      )}
+
+      {step==='batch-review' && batch && (
+        <>
+          <div style={{...T.glow(d),padding:16,marginBottom:14}}>
+            <div style={{fontSize:13,color:T.text(d),marginBottom:10,fontWeight:600}}>Resumen del ZIP</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+              <div>
+                <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',marginBottom:4}}>A importar</div>
+                <div style={{fontSize:18,fontWeight:800,color:'#4ade80'}}>{validBatch.length}</div>
+                <div style={{fontSize:10,color:T.sub(d)}}>facturas</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',marginBottom:4}}>Ítems</div>
+                <div style={{fontSize:18,fontWeight:800,color:T.text(d)}}>{totalItems}</div>
+                <div style={{fontSize:10,color:T.sub(d)}}>productos</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',marginBottom:4}}>Total</div>
+                <div style={{fontSize:18,fontWeight:800,color:'#f97316'}}>{fmt(totalAmount)}</div>
+              </div>
+            </div>
+            {skippedBatch.length > 0 && (
+              <div style={{marginTop:12,fontSize:11,color:'#f97316'}}>
+                ⚠ {skippedBatch.length} omitidas ({skippedBatch.map(r=>r.reason).join(', ')})
+              </div>
+            )}
+          </div>
+          <div style={{maxHeight:200,overflowY:'auto',borderRadius:10,border:`1px solid ${T.inactBdr(d)}`,marginBottom:14}}>
+            {validBatch.map((r,i)=>(
+              <div key={i} style={{display:'flex',gap:10,padding:'10px 14px',borderBottom:i<validBatch.length-1?`1px solid ${T.divider(d)}`:'none',alignItems:'center'}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,color:T.text(d),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.store}</div>
+                  <div style={{fontSize:10,color:T.sub(d),marginTop:2}}>{r.date} · {r.purchases.length} ítems</div>
+                </div>
+                <div style={{fontSize:12,color:'#f97316',fontWeight:600}}>{fmtFull(r.purchases.reduce((a,p)=>a+p.total,0))}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <Btn onClick={()=>{setBatch(null);setStep('pick');}} variant="ghost" style={{flex:1}}>Cancelar</Btn>
+            <Btn onClick={confirmBatch} style={{flex:2}}>Importar {validBatch.length} facturas ✓</Btn>
+          </div>
+        </>
+      )}
+
+      {step==='done' && (
+        <div style={{textAlign:'center',padding:'24px 0'}}>
+          <div style={{fontSize:52,marginBottom:12}}>✅</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:'#4ade80',marginBottom:8}}>¡Importado!</div>
+          <div style={{fontSize:13,color:T.muted(d),marginBottom:24}}>Asigná categorías pendientes en Compras</div>
+          <Btn onClick={onClose} style={{maxWidth:200,margin:'0 auto'}}>Listo</Btn>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+
+function BackupModal({purchases, onRestore, onEraseAll, onClose}) {
+  const d = useTheme()==='dark';
+  const [tab,setTab]     = useState('export');
+  const [status,setStatus] = useState('');
+  const [isErr,setIsErr]   = useState(false);
+  const ref = useRef();
+
+  const doExport = async () => {
+    try {
+      const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+      downloadJSON(await buildBackupPayload(), `mercado2026_backup_${ts}.json`);
+      setStatus('✅ Backup descargado correctamente.'); setIsErr(false);
+    } catch(e) { setStatus('❌ No se pudo crear el backup: ' + e.message); setIsErr(true); }
+  };
+
+  const handleFile = async e => {
+    const file = e.target.files[0]; if(!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if(!data.purchases||!Array.isArray(data.purchases)||!data.purchases.every(p=>p&&p.id!=null)) throw new Error();
+      if(!confirm(`¿Restaurar ${data.purchases.length} compras? Reemplaza todos los datos actuales.`)) return;
+      await onRestore(data);
+      setStatus(`✅ Restauradas ${data.purchases.length} compras.`); setIsErr(false);
+    } catch { setStatus('❌ Archivo inválido. Verificá que sea un backup de esta app.'); setIsErr(true); }
+  };
+
+  const tabBtn = (id,label) => (
+    <button onClick={()=>setTab(id)} style={{flex:1,padding:'9px 0',borderRadius:10,fontSize:12,fontWeight:500,border:`1px solid ${tab===id?'#f97316':T.inactBdr(d)}`,background:tab===id?'#f97316':T.inactBg(d),color:tab===id?'#0f0f13':T.inactClr(d)}}>{label}</button>
+  );
+
+  return (
+    <Modal title="Backup y restauración" onClose={onClose}>
+      <div style={{display:'flex',gap:8,marginBottom:20}}>{tabBtn('export','💾 Exportar')}{tabBtn('restore','📂 Restaurar')}{tabBtn('erase','🗑 Borrar todo')}</div>
+      {tab==='export' && (
+        <>
+          <div style={{background:T.infoBg(d),border:`1px solid ${T.inactBdr(d)}`,borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:13,color:T.text(d),marginBottom:6}}>Se descargará un archivo <strong>.json</strong> con todas tus compras, el catálogo y tus categorías.</div>
+            <div style={{fontSize:11,color:T.sub(d)}}>{purchases.length} compras registradas</div>
+            <div style={{fontSize:11,color:T.sub(d),marginTop:8,lineHeight:1.5}}>
+              💡 Además se descarga un backup automático la primera vez que usás la app cada día
+              {(()=>{ try{ const l=localStorage.getItem(LS_LAST_BACKUP); return l?` (último: ${l})`:''; }catch{ return ''; } })()}.
+            </div>
+          </div>
+          <Btn onClick={doExport}>Descargar backup</Btn>
+        </>
+      )}
+      {tab==='restore' && (
+        <>
+          <div style={{background:T.warnBg(d),border:'1px solid #f97316',borderRadius:12,padding:14,marginBottom:14}}>
+            <div style={{fontSize:13,color:'#f97316',fontWeight:600,marginBottom:4}}>⚠ Atención</div>
+            <div style={{fontSize:12,color:T.warnSub(d)}}>Restaurar reemplaza <strong>todos los datos actuales</strong>.</div>
+          </div>
+          <div onClick={()=>ref.current.click()}
+            style={{border:`2px dashed ${d?'#2a2a35':'#d4cfc9'}`,borderRadius:14,padding:'28px 20px',textAlign:'center',cursor:'pointer',marginBottom:14}}
+            onMouseEnter={e=>e.currentTarget.style.borderColor='#f97316'}
+            onMouseLeave={e=>e.currentTarget.style.borderColor=d?'#2a2a35':'#d4cfc9'}>
+            <div style={{fontSize:36,marginBottom:8}}>📂</div>
+            <div style={{fontSize:13,color:T.text(d)}}>Seleccionar archivo .json</div>
+          </div>
+          <input ref={ref} type="file" accept=".json" onChange={handleFile} style={{display:'none'}}/>
+        </>
+      )}
+      {tab==='erase' && (
+        <>
+          <div style={{background:T.warnBg(d),border:'1px solid #f87171',borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:13,color:'#f87171',fontWeight:600,marginBottom:6}}>⚠️ Borrar todas las compras</div>
+            <div style={{fontSize:12,color:T.warnSub(d),lineHeight:1.6}}>
+              Esto elimina <strong>todas las compras</strong> de este dispositivo ({purchases.length} compras).<br/>
+              El catálogo de productos y categorías <strong>no se borra</strong>.<br/>
+              Hacé un backup primero si querés conservar los datos.
+            </div>
+          </div>
+          <Btn onClick={doExport} variant="ghost" style={{marginBottom:10}}>💾 Descargar backup primero</Btn>
+          <Btn onClick={async ()=>{
+            if (!confirm(`¿Borrar las ${purchases.length} compras? Esta acción no se puede deshacer.`)) return;
+            if (!confirm('¿Estás seguro? Se borrarán TODAS las compras.')) return;
+            await onEraseAll();
+            setStatus('✅ Todas las compras fueron borradas.'); setIsErr(false); setTab('export');
+          }} variant="danger">🗑 Borrar todas las compras</Btn>
+        </>
+      )}
+
+      {status && (
+        <div style={{marginTop:14,padding:'10px 14px',borderRadius:10,fontSize:12,background:isErr?(d?'#2a1a1a':'#fff5f5'):(d?'#1a2a1a':'#f0faf3'),color:isErr?'#f87171':'#4ade80',border:`1px solid ${isErr?'#5a2a2a':d?'#2a4a2a':'#b8e8c8'}`}}>
+          {status}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function Dashboard({purchases, onGoCats, onGoProductos, onGoCompras}) {
+  const d = useTheme()==='dark';
+  const catSummary = useMemo(()=>buildCatSummary(purchases),[purchases]);
+  const grandTotal = catSummary.reduce((a,b)=>a+b.total,0);
+  const monthlyTotals = useMemo(()=>{
+    const arr=Array(12).fill(0);
+    for(const p of purchases) arr[monthOf(p.date)]+=p.total;
+    return arr;
+  },[purchases]);
+  const activeM  = monthlyTotals.filter(v=>v>0);
+  const maxM     = Math.max(...activeM,1);
+  const bestIdx  = monthlyTotals.indexOf(Math.max(...monthlyTotals));
+  const uncat    = purchases.filter(p=>!p.category).length;
+
+  return (
+    <div className="fade" style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:14}}>
+      {uncat>0 && (
+        <div style={{background:T.warnBg(d),border:'1px solid #f97316',borderRadius:12,padding:'12px 16px',display:'flex',alignItems:'center',gap:12}}>
+          <div style={{fontSize:20}}>⚠️</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,color:'#f97316',fontWeight:600}}>{uncat} compras sin categoría</div>
+            <div style={{fontSize:11,color:T.warnSub(d),marginTop:2}}>Asignalas en Compras</div>
+          </div>
+          <button onClick={onGoCompras} style={{background:'#f97316',border:'none',borderRadius:8,color:'#0f0f13',fontSize:11,fontWeight:700,padding:'7px 12px'}}>Ir ahora</button>
+        </div>
+      )}
+
+      <div style={{...T.glow(d),padding:22}}>
+        <div style={{fontSize:11,color:T.muted(d),letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Total gastado</div>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:34,fontWeight:800,color:'#f97316',letterSpacing:-1,lineHeight:1}}>{fmtFull(grandTotal)}</div>
+        <div style={{fontSize:11,color:T.sub(d),marginTop:8}}>{purchases.length} compras · {catSummary.length} categorías</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div style={{...T.card(d),padding:16}}>
+          <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>Prom. mensual</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:'#4ade80'}}>{fmt(Math.round(grandTotal/Math.max(activeM.length,1)))}</div>
+        </div>
+        <div style={{...T.card(d),padding:16}}>
+          <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>Mes más alto</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:'#f472b6'}}>{activeM.length?MONTH_NAMES[bestIdx].slice(0,3).toUpperCase():'—'}</div>
+          <div style={{fontSize:11,color:T.sub(d),marginTop:2}}>{fmt(maxM)}</div>
+        </div>
+      </div>
+
+      <div style={{...T.card(d),padding:20}}>
+        <div style={{fontSize:11,color:T.muted(d),letterSpacing:1,textTransform:'uppercase',marginBottom:16}}>Evolución mensual</div>
+        {MONTHS.map((m,i)=>monthlyTotals[i]>0?(
+          <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
+            <div style={{flex:1,height:10,background:T.track(d),borderRadius:5,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${(monthlyTotals[i]/maxM)*100}%`,background:PAL[i],borderRadius:5,transition:'width 0.8s cubic-bezier(0.16,1,0.3,1)'}}/>
+            </div>
+            <div style={{width:60,fontSize:11,color:T.text(d),textAlign:'right'}}>{fmt(monthlyTotals[i])}</div>
+          </div>
+        ):null)}
+      </div>
+
+      {/* Top productos (by nombre across all categories) */}
+      <div style={{...T.card(d),padding:20}}>
+        <div style={{fontSize:11,color:T.muted(d),letterSpacing:1,textTransform:'uppercase',marginBottom:14}}>Top productos</div>
+        {buildNombreSummary(purchases, null).slice(0,8).map((n,i)=>(
+          <div key={n.name} onClick={()=>onGoProductos(n.name)}
+            style={{display:'flex',alignItems:'center',gap:10,padding:'8px 6px',borderRadius:8,cursor:'pointer',marginBottom:2,transition:'background 0.15s'}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{width:24,height:24,borderRadius:6,background:PAL[i%12],display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:'#0f0f13',flexShrink:0}}>{i+1}</div>
+            <div style={{flex:1,fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:T.text(d)}}>{n.name}</div>
+            <div style={{fontSize:12,color:'#f97316'}}>{fmt(n.total)}</div>
+          </div>
+        ))}
+        <div onClick={onGoCats} style={{textAlign:'center',marginTop:10,fontSize:12,color:'#f97316',cursor:'pointer',padding:8}}>
+          Ver por categoría →
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CATEGORY LIST ─────────────────────────────────────────────────────────────
+function CatList({purchases, onSelectCat}) {
+  const d = useTheme()==='dark';
+  const summary = useMemo(()=>buildCatSummary(purchases),[purchases]);
+  const [q,setQ] = useState('');
+  const grandTotal = summary.reduce((a,b)=>a+b.total,0);
+  const list = q ? summary.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())) : summary;
+  const maxV = summary[0]?.total||1;
+  return (
+    <div className="fade" style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:12}}>
+      <Inp value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar categoría…"/>
+      <div style={{...T.card(d),overflow:'hidden'}}>
+        {list.map((cat,i)=>(
+          <div key={cat.name} onClick={()=>onSelectCat(cat)}
+            style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',cursor:'pointer',borderBottom:i<list.length-1?`1px solid ${T.divider(d)}`:'none',transition:'background 0.15s'}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,marginBottom:5,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:T.text(d)}}>{cat.name}</div>
+              <div style={{height:3,background:T.track(d),borderRadius:2}}>
+                <div style={{height:'100%',width:`${(cat.total/maxV)*100}%`,background:PAL[i%12],borderRadius:2}}/>
+              </div>
+            </div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontSize:13,color:'#f97316'}}>{fmt(cat.total)}</div>
+              <div style={{fontSize:10,color:T.sub(d),marginTop:1}}>{Math.round(cat.total/grandTotal*100)}%</div>
+              {(()=>{
+                const catPs = purchases.filter(p=>(p.category||'Sin categoría')===cat.name);
+                const w = whatIfCheapestCat(catPs);
+                return w ? <div style={{fontSize:9,color:'#4ade80',marginTop:1}}>-{fmt(w.savings)} posible</div> : null;
+              })()}
+            </div>
+            <div style={{color:T.sub(d)}}>›</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── NOMBRE LIST (within a category) ──────────────────────────────────────────
+function NombreList({purchases, catName, onBack, onSelectNombre, onCompare}) {
+  const d = useTheme()==='dark';
+  const summary = useMemo(()=>buildNombreSummary(purchases, catName),[purchases,catName]);
+  const catTotal = summary.reduce((a,b)=>a+b.total,0);
+  const maxV = summary[0]?.total||1;
+  const [q,setQ] = useState('');
+  const list = q ? summary.filter(n=>n.name.toLowerCase().includes(q.toLowerCase())) : summary;
+
+  // Monthly bar for this category
+  const months = useMemo(()=>{
+    const arr=Array(12).fill(0);
+    for(const p of (catName ? purchases.filter(p=>(p.category||'Sin categoría')===catName) : purchases)) arr[monthOf(p.date)]+=p.total;
+    return arr;
+  },[purchases,catName]);
+  const maxM = Math.max(...months.filter(v=>v>0),1);
+
+  return (
+    <div className="fade" style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:14}}>
+      {onBack && <button onClick={onBack} style={{alignSelf:'flex-start',padding:'6px 14px',background:T.inactBg(d),border:`1px solid ${T.inactBdr(d)}`,borderRadius:8,color:T.muted(d),fontSize:12}}>← Categorías</button>}
+
+      <div style={{...T.glow(d),padding:20}}>
+        <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>{catName||'Todos los productos'}</div>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:30,fontWeight:800,color:'#f97316',letterSpacing:-1}}>{fmtFull(catTotal)}</div>
+        <div style={{fontSize:11,color:T.sub(d),marginTop:6}}>{summary.length} productos · {purchases.filter(p=>(p.category||'Sin categoría')===catName).length} compras</div>
+      </div>
+
+      {/* Monthly chart */}
+      <div style={{...T.card(d),padding:18}}>
+        <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:14}}>Por mes</div>
+        {MONTHS.map((m,i)=>months[i]>0?(
+          <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:9}}>
+            <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
+            <div style={{flex:1,height:8,background:T.track(d),borderRadius:4,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${(months[i]/maxM)*100}%`,background:PAL[i],borderRadius:4}}/>
+            </div>
+            <div style={{width:60,fontSize:11,color:T.text(d),textAlign:'right'}}>{fmt(months[i])}</div>
+          </div>
+        ):null)}
+      </div>
+
+      {/* Biggest savings opportunity across all products */}
+      {(()=>{
+        const opportunities = list
+          .map(n => ({ name: n.name, wic: whatIfCheapest(n.purchases) }))
+          .filter(x => x.wic)
+          .sort((a,b) => b.wic.savings - a.wic.savings)
+          .slice(0,1);
+        if (!opportunities.length) return null;
+        const best = opportunities[0];
+        return (
+          <div style={{background:d?'#1a2a1a':'#f0faf3',border:`1px solid ${d?'#2a4a2a':'#b8e8c8'}`,borderRadius:12,padding:'11px 16px',marginBottom:4,cursor:'pointer'}}
+            onClick={()=>onSelectNombre(best.name)}>
+            <div style={{fontSize:10,color:'#4ade80',fontWeight:600,marginBottom:3}}>💡 MAYOR OPORTUNIDAD DE AHORRO</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div style={{fontSize:13,color:T.text(d),fontWeight:600}}>{best.name}</div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:13,color:'#4ade80',fontWeight:700}}>-{fmtFull(best.wic.savings)}</div>
+                <div style={{fontSize:10,color:T.sub(d)}}>{best.wic.pct.toFixed(0)}% si siempre el más barato</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Nombre list */}
+      <div style={{display:'flex',gap:8}}>
+        <div style={{flex:1}}><Inp value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar producto…"/></div>
+        <button onClick={()=>onCompare && onCompare('')}
+          style={{padding:'0 14px',borderRadius:10,fontSize:12,fontWeight:600,whiteSpace:'nowrap',
+            background:T.inactBg(d),border:`1px solid ${T.inactBdr(d)}`,color:T.inactClr(d)}}>
+          ⚖️ Comparar
+        </button>
+      </div>
+      <div style={{...T.card(d),overflow:'hidden'}}>
+        <div style={{padding:'12px 16px 8px',fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1}}>Por producto</div>
+        {list.map((n,i)=>(
+          <div key={n.name} onClick={()=>onSelectNombre(n.name)}
+            style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',cursor:'pointer',borderTop:`1px solid ${T.divider(d)}`,transition:'background 0.15s'}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,color:T.text(d),marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.name}</div>
+              <div style={{height:3,background:T.track(d),borderRadius:2}}>
+                <div style={{height:'100%',width:`${(n.total/maxV)*100}%`,background:PAL[i%12],borderRadius:2}}/>
+              </div>
+            </div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontSize:13,color:'#f97316'}}>{fmt(n.total)}</div>
+              <div style={{fontSize:10,color:T.sub(d),marginTop:1}}>{n.count} compra{n.count!==1?'s':''}</div>
+              {(()=>{ const w=whatIfCheapest(n.purchases); return w ? <div style={{fontSize:9,color:'#4ade80',marginTop:1}}>-{fmt(w.savings)} posible</div> : null; })()}
+            </div>
+            <button onClick={e=>{ e.stopPropagation(); onCompare && onCompare(n.name); }}
+              style={{background:'transparent',border:'none',fontSize:14,color:T.sub(d),padding:'4px 6px'}}>⚖️</button>
+            <div style={{color:T.sub(d)}}>›</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── NOMBRE DETAIL (individual purchases for a nombre) ────────────────────────
+function NombreDetail({nombreItem, onBack, onEditPurchase}) {
+  const d = useTheme()==='dark';
+  const [tab, setTab] = useState('gasto'); // gasto | cantidad | precio
+  const ps = nombreItem.purchases.slice().sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Compute price-per-unit for each individual purchase, to find the cheapest
+  // and most expensive option bought (e.g. comparing different milk brands).
+  // We only compare purchases that share the same real-world unit, since
+  // ₲/UNI and ₲/kg aren't directly comparable.
+  const pricedPs = useMemo(() => {
+    return ps.map(p => {
+      const amount = (p.packageSize != null) ? p.qty * p.packageSize : p.qty;
+      const realUnit = (p.packageSize != null) ? p.packageSizeUnit : p.unit;
+      const pricePerUnit = amount > 0 ? p.total / amount : null;
+      return { ...p, pricePerUnit, realUnit };
+    });
+  }, [ps]);
+
+  const { cheapest, priciest } = useMemo(() => {
+    // Group by realUnit so we only compare apples to apples
+    const byUnit = {};
+    for (const p of pricedPs) {
+      if (p.pricePerUnit == null) continue;
+      if (!byUnit[p.realUnit]) byUnit[p.realUnit] = [];
+      byUnit[p.realUnit].push(p);
+    }
+    // Use the most common unit group (the one with the most purchases) for the headline comparison
+    const groups = Object.values(byUnit).sort((a,b)=>b.length-a.length);
+    if (!groups.length || groups[0].length < 2) return { cheapest: null, priciest: null };
+    const sorted = [...groups[0]].sort((a,b)=>a.pricePerUnit-b.pricePerUnit);
+    return { cheapest: sorted[0], priciest: sorted[sorted.length-1] };
+  }, [pricedPs]);
+  // Compute quantity and average price per month LIVE from actual purchases,
+  // so XML imports and manual additions are always reflected correctly.
+  // We track TWO things per month:
+  //   - rawCount: sum of qty as bought (e.g. "2 UNI")
+  //   - realAmount: sum of qty × packageSize when known (e.g. "1 kg")
+  const unit = ps[0]?.unit || UNITS_MAP[nombreItem.name] || 'UNI';
+  const pkgUnit = ps.find(p=>p.packageSizeUnit)?.packageSizeUnit || null;
+  const hasPkgSize = ps.some(p => p.packageSize != null);
+
+  const rawCountData = useMemo(() => {
+    const arr = Array(12).fill(0);
+    for (const p of ps) arr[monthOf(p.date)] += p.qty;
+    return arr;
+  }, [ps]);
+
+  const cantData = useMemo(() => {
+    // Real-world amount: qty × packageSize where known, else just qty
+    const arr = Array(12).fill(0);
+    for (const p of ps) {
+      const amount = (p.packageSize != null) ? p.qty * p.packageSize : p.qty;
+      arr[monthOf(p.date)] += amount;
+    }
+    return arr;
+  }, [ps]);
+
+  const precioData = useMemo(() => {
+    const totals = Array(12).fill(0);
+    const counts = Array(12).fill(0);
+    for (const p of ps) {
+      const m = monthOf(p.date);
+      const amount = (p.packageSize != null) ? p.qty * p.packageSize : p.qty;
+      if (amount > 0) {
+        totals[m] += p.total / amount; // price per unit for this purchase
+        counts[m] += 1;
+      }
+    }
+    return totals.map((t,i) => counts[i] > 0 ? t / counts[i] : null);
+  }, [ps]);
+
+  const maxGasto   = Math.max(...nombreItem.months.filter(v=>v>0), 1);
+  const maxCant    = Math.max(...cantData.filter(v=>v>0), 1);
+  const maxPrecio  = Math.max(...precioData.filter(v=>v!=null), 1);
+
+  const tabBtn = (id, label) => (
+    <button onClick={()=>setTab(id)} style={{flex:1,padding:'8px 0',borderRadius:9,fontSize:11,fontWeight:500,border:`1px solid ${tab===id?'#f97316':T.inactBdr(d)}`,background:tab===id?'#f97316':T.inactBg(d),color:tab===id?'#0f0f13':T.inactClr(d)}}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="fade" style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:14}}>
+      <button onClick={onBack} style={{alignSelf:'flex-start',padding:'6px 14px',background:T.inactBg(d),border:`1px solid ${T.inactBdr(d)}`,borderRadius:8,color:T.muted(d),fontSize:12}}>← Volver</button>
+      <div style={{...T.glow(d),padding:22}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,marginBottom:4,color:T.text(d)}}>{nombreItem.name}</div>
+        <div style={{fontSize:11,color:T.sub(d),marginBottom:10}}>{nombreItem.category||'Sin categoría'} · {ps.length} compras</div>
+        <div style={{fontSize:32,fontWeight:800,color:'#f97316',fontFamily:"'Syne',sans-serif",letterSpacing:-1}}>{fmtFull(nombreItem.total)}</div>
+        {(() => {
+          const { avg, basis } = smartAvg(ps, null);
+          return avg > 0 ? (
+            <div style={{fontSize:12,color:T.sub(d),marginTop:8}}>
+              Promedio real: <strong style={{color:T.text(d)}}>{fmtFull(avg)}/mes</strong>
+              <span style={{fontSize:10,marginLeft:6}}>({basis})</span>
+            </div>
+          ) : null;
+        })()}
+      </div>
+
+      {/* Smart averages row */}
+      {(()=>{
+        const { avg: gastoAvg, basis } = smartAvg(ps, null);
+        const cantAvg = rawCountData.reduce((a,b)=>a+b,0) > 0 && ps.length > 0
+          ? (() => { const { avg } = smartAvg(ps.map(p=>({...p,total:((p.packageSize!=null?p.qty*p.packageSize:p.qty))})), null); return avg; })()
+          : 0;
+        const priceAvg = (() => {
+          const vals = precioData.filter(v=>v!=null);
+          return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+        })();
+        if (!gastoAvg) return null;
+        return (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:4}}>
+            <div style={{...T.card(d),padding:12}}>
+              <div style={{fontSize:9,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Prom. gasto/mes</div>
+              <div style={{fontSize:14,fontWeight:700,color:'#f97316'}}>{fmtFull(gastoAvg)}</div>
+              <div style={{fontSize:9,color:T.sub(d),marginTop:2}}>{basis}</div>
+            </div>
+            {rawCountData.some(v=>v>0) && (
+              <div style={{...T.card(d),padding:12}}>
+                <div style={{fontSize:9,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Prom. {hasPkgSize?pkgUnit:unit}/mes</div>
+                <div style={{fontSize:14,fontWeight:700,color:'#60a5fa'}}>
+                  {(cantData.reduce((a,b)=>a+b,0)/Math.max(rawCountData.filter(v=>v>0).length,1)).toFixed(2)}
+                </div>
+                <div style={{fontSize:9,color:T.sub(d),marginTop:2}}>meses con compras</div>
+              </div>
+            )}
+            {priceAvg > 0 && (
+              <div style={{...T.card(d),padding:12}}>
+                <div style={{fontSize:9,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Precio prom.</div>
+                <div style={{fontSize:14,fontWeight:700,color:'#a78bfa'}}>{fmtFull(priceAvg)}</div>
+                <div style={{fontSize:9,color:T.sub(d),marginTop:2}}>por {unit}</div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* What if cheapest card */}
+      {(()=>{
+        const wic = whatIfCheapest(ps);
+        if (!wic) return null;
+        return (
+          <div style={{background:d?'#1a2a1a':'#f0faf3',border:`1px solid ${d?'#2a4a2a':'#b8e8c8'}`,borderRadius:12,padding:'12px 16px',marginBottom:4}}>
+            <div style={{fontSize:11,color:'#4ade80',fontWeight:600,marginBottom:6}}>💡 Si siempre hubieras comprado la opción más barata del mes</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{fontSize:11,color:T.sub(d)}}>Habrías gastado</div>
+                <div style={{fontSize:16,fontWeight:700,color:'#4ade80'}}>{fmtFull(wic.cheapestTotal)}</div>
+              </div>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:11,color:T.sub(d)}}>Ahorro</div>
+                <div style={{fontSize:16,fontWeight:700,color:'#4ade80'}}>-{fmtFull(wic.savings)}</div>
+                <div style={{fontSize:10,color:T.sub(d)}}>({wic.pct.toFixed(0)}% menos)</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:11,color:T.sub(d)}}>Real</div>
+                <div style={{fontSize:16,fontWeight:700,color:'#f87171'}}>{fmtFull(wic.actualTotal)}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Tab selector */}
+      <div style={{display:'flex',gap:8}}>
+        {tabBtn('gasto','💰 Gasto')}
+        {tabBtn('cantidad',`📦 Cantidad (${unit})`)}
+        {tabBtn('precio',`📈 Precio/${unit}`)}
+      </div>
+
+      {/* Gasto tab */}
+      {tab==='gasto' && (
+        <div style={{...T.card(d),padding:20}}>
+          <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:16}}>Gasto por mes</div>
+          {MONTHS.map((m,i)=>(
+            <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,opacity:nombreItem.months[i]>0?1:0.35}}>
+              <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
+              <div style={{flex:1,height:10,background:T.track(d),borderRadius:5,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${maxGasto>0?(nombreItem.months[i]/maxGasto)*100:0}%`,background:PAL[i%12],borderRadius:5}}/>
+              </div>
+              <div style={{width:90,fontSize:11,color:nombreItem.months[i]>0?T.text(d):T.sub(d),textAlign:'right'}}>
+                {nombreItem.months[i]>0?fmtFull(nombreItem.months[i]):'—'}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cantidad tab */}
+      {tab==='cantidad' && (
+        <div style={{...T.card(d),padding:20}}>
+          <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:16}}>
+            Cantidad por mes {hasPkgSize ? `(${unit} → ${pkgUnit})` : `(${unit})`}
+          </div>
+          {rawCountData.some(v=>v>0) ? MONTHS.map((m,i)=>(
+            <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,opacity:rawCountData[i]>0?1:0.35}}>
+              <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
+              <div style={{flex:1,height:10,background:T.track(d),borderRadius:5,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${(rawCountData[i]/Math.max(...rawCountData.filter(v=>v>0),1))*100}%`,background:PAL[i%12],borderRadius:5}}/>
+              </div>
+              <div style={{width:hasPkgSize?150:90,fontSize:11,color:rawCountData[i]>0?T.text(d):T.sub(d),textAlign:'right'}}>
+                {rawCountData[i]>0 ? (
+                  <>{rawCountData[i] % 1 === 0 ? rawCountData[i] : rawCountData[i].toFixed(2)} {unit}
+                  {hasPkgSize && <span style={{color:'#60a5fa'}}> ≈ {cantData[i] % 1 === 0 ? cantData[i] : cantData[i].toFixed(2)} {pkgUnit}</span>}</>
+                ) : '—'}
+              </div>
+            </div>
+          )) : <div style={{color:T.sub(d),fontSize:13,padding:'8px 0'}}>Sin datos de cantidad</div>}
+          {rawCountData.some(v=>v>0) && (
+            <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.divider(d)}`,display:'flex',justifyContent:'space-between'}}>
+              <span style={{fontSize:11,color:T.muted(d)}}>Total</span>
+              <span style={{fontSize:13,color:T.text(d),fontWeight:600}}>
+                {rawCountData.reduce((a,b)=>a+b,0).toFixed(rawCountData.some(v=>v%1!==0)?2:0)} {unit}
+                {hasPkgSize && <span style={{color:'#60a5fa'}}> ≈ {cantData.reduce((a,b)=>a+b,0).toFixed(cantData.some(v=>v%1!==0)?2:0)} {pkgUnit}</span>}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Precio tab */}
+      {tab==='precio' && (
+        <div style={{...T.card(d),padding:20}}>
+          <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:16}}>Precio promedio por mes (₲/{unit})</div>
+          {precioData.some(v=>v!=null) ? MONTHS.map((m,i)=>(
+            <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,opacity:precioData[i]!=null?1:0.35}}>
+              <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
+              <div style={{flex:1,height:10,background:T.track(d),borderRadius:5,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${precioData[i]!=null?(precioData[i]/maxPrecio)*100:0}%`,background:PAL[i%12],borderRadius:5}}/>
+              </div>
+              <div style={{width:110,fontSize:11,color:precioData[i]!=null?T.text(d):T.sub(d),textAlign:'right'}}>
+                {precioData[i]!=null?`${fmtFull(precioData[i])}/${unit}`:'—'}
+              </div>
+            </div>
+          )) : <div style={{color:T.sub(d),fontSize:13,padding:'8px 0'}}>Sin datos de precio</div>}
+          {precioData.filter(v=>v!=null).length > 1 && (()=>{
+            const vals = precioData.filter(v=>v!=null);
+            const trend = vals[vals.length-1] - vals[0];
+            return (
+              <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.divider(d)}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:11,color:T.muted(d)}}>Tendencia</span>
+                <span style={{fontSize:13,fontWeight:600,color:trend>0?'#f87171':'#4ade80'}}>
+                  {trend>0?'↑':'↓'} {fmtFull(Math.abs(trend))}/{unit}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Individual purchases */}
+      <div style={{...T.card(d),overflow:'hidden'}}>
+        {cheapest && priciest && cheapest.id !== priciest.id && (
+          <div style={{padding:'14px 16px',borderBottom:`1px solid ${T.divider(d)}`,display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <div>
+              <div style={{fontSize:10,color:'#4ade80',fontWeight:600,marginBottom:4}}>✓ MÁS BARATO</div>
+              <div style={{fontSize:12,color:T.text(d),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cheapest.rawName}</div>
+              <div style={{fontSize:13,fontWeight:700,color:'#4ade80',marginTop:2}}>{fmtFull(cheapest.pricePerUnit)}/{cheapest.realUnit}</div>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:'#f87171',fontWeight:600,marginBottom:4}}>✗ MÁS CARO</div>
+              <div style={{fontSize:12,color:T.text(d),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{priciest.rawName}</div>
+              <div style={{fontSize:13,fontWeight:700,color:'#f87171',marginTop:2}}>{fmtFull(priciest.pricePerUnit)}/{priciest.realUnit}</div>
+            </div>
+          </div>
+        )}
+        <div style={{padding:'14px 16px 8px',fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1}}>Compras ({ps.length})</div>
+        {pricedPs.map((p,i)=>(
+          <div key={p.id} onClick={()=>onEditPurchase(p)}
+            style={{display:'flex',gap:10,padding:'10px 16px',borderTop:`1px solid ${T.divider(d)}`,cursor:'pointer',alignItems:'center',transition:'background 0.15s'}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <div style={{fontSize:12,color:T.text(d),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.rawName}</div>
+                {cheapest && p.id===cheapest.id && <span className="badge" style={{background:T.okBg(d),color:'#4ade80',flexShrink:0}}>✓</span>}
+                {priciest && p.id===priciest.id && cheapest?.id!==priciest?.id && <span className="badge" style={{background:d?'#3a1a1a':'#fff0f0',color:'#f87171',flexShrink:0}}>✗</span>}
+              </div>
+              <div style={{fontSize:10,color:T.sub(d),marginTop:2}}>
+                {p.date} · {p.qty} {p.unit}
+                {p.packageSize != null && <span style={{color:'#60a5fa'}}> ≈ {(p.qty*p.packageSize) % 1 === 0 ? (p.qty*p.packageSize) : (p.qty*p.packageSize).toFixed(2)} {p.packageSizeUnit}</span>}
+                {' · '}{p.store}
+              </div>
+            </div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontSize:12,color:'#f97316'}}>{fmtFull(p.total)}</div>
+              {p.pricePerUnit != null && <div style={{fontSize:9,color:T.sub(d),marginTop:1}}>{fmtFull(p.pricePerUnit)}/{p.realUnit}</div>}
+            </div>
+            <div style={{color:T.sub(d),fontSize:11}}>✎</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ComprasList({purchases, onEdit, allCategories}) {
+  const d = useTheme()==='dark';
+  const [q,setQ]           = useState('');
+  const [filter,setFilter] = useState('all');
+  const [sortBy,setSortBy] = useState('date');
+  const uncat = purchases.filter(p=>!p.category).length;
+
+  const list = useMemo(()=>{
+    let arr = [...purchases];
+    if(filter==='uncategorized') arr = arr.filter(p=>!p.category);
+    if(filter==='noname') arr = arr.filter(p=>!p.nombre);
+    if(q){ const lq=q.toLowerCase(); arr=arr.filter(p=>p.rawName.toLowerCase().includes(lq)||(p.nombre||'').toLowerCase().includes(lq)||(p.category||'').toLowerCase().includes(lq)||(p.store||'').toLowerCase().includes(lq)); }
+    if(sortBy==='date') arr.sort((a,b)=>b.date.localeCompare(a.date));
+    else if(sortBy==='total') arr.sort((a,b)=>b.total-a.total);
+    else arr.sort((a,b)=>(a.nombre||a.rawName).localeCompare(b.nombre||b.rawName,'es'));
+    return arr;
+  },[purchases,q,filter,sortBy]);
+
+  const noNameCount = purchases.filter(p=>!p.nombre).length;
+
+  return (
+    <div className="fade" style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:10}}>
+      <Inp value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar por nombre, categoría, tienda…"/>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+        {[['all',`Todas (${purchases.length})`],['uncategorized',`⚠ Sin cat. (${uncat})`],['noname',`Sin nombre (${noNameCount})`]].map(([k,l])=>(
+          <button key={k} onClick={()=>setFilter(k)} style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px solid ${filter===k?'#f97316':T.inactBdr(d)}`,background:filter===k?'#f97316':T.inactBg(d),color:filter===k?'#0f0f13':T.inactClr(d),whiteSpace:'nowrap'}}>{l}</button>
+        ))}
+      </div>
+      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+        <span style={{fontSize:10,color:T.sub(d),textTransform:'uppercase',letterSpacing:1}}>Orden:</span>
+        {[['date','Fecha'],['total','Monto'],['name','Nombre']].map(([k,l])=>(
+          <button key={k} onClick={()=>setSortBy(k)} style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px solid ${sortBy===k?'#60a5fa':T.inactBdr(d)}`,background:sortBy===k?d?'#1a2a3a':'#e8f0ff':T.inactBg(d),color:sortBy===k?'#60a5fa':T.inactClr(d)}}>{l}</button>
+        ))}
+        <span style={{marginLeft:'auto',fontSize:11,color:T.sub(d)}}>{list.length}</span>
+      </div>
+      <div style={{...T.card(d),overflow:'hidden'}}>
+        {list.length===0 && <div style={{padding:32,textAlign:'center',color:T.sub(d),fontSize:13}}>Sin resultados</div>}
+        {list.map((p,i)=>(
+          <div key={p.id} onClick={()=>onEdit(p)}
+            style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',cursor:'pointer',borderBottom:i<list.length-1?`1px solid ${T.divider(d)}`:'none',transition:'background 0.15s'}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:T.text(d)}}>{p.rawName}</div>
+              <div style={{display:'flex',gap:5,alignItems:'center',marginTop:4,flexWrap:'wrap'}}>
+                <span style={{fontSize:10,color:T.sub(d)}}>{p.date}</span>
+                {p.nombre && <span style={{fontSize:10,fontWeight:600,color:'#60a5fa'}}>→ {p.nombre}</span>}
+                {p.category
+                  ? <span className="badge" style={{background:d?'#1a3020':'#e8f5ee',color:'#4ade80'}}>{p.category}</span>
+                  : <span className="badge" style={{background:d?'#2a1500':'#fff3e0',color:'#f97316'}}>⚠ Sin cat.</span>
+                }
+              </div>
+            </div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontSize:13,color:'#f97316',fontWeight:600}}>{fmt(p.total)}</div>
+              <div style={{fontSize:10,color:T.sub(d),marginTop:1}}>{p.qty} {p.unit||'UNI'}</div>
+            </div>
+            <div style={{color:T.sub(d),fontSize:12,marginLeft:2}}>✎</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+
+// ── GENERIC AUTOCOMPLETE ──────────────────────────────────────────────────────
+function Autocomplete({value, onChange, options, getSubtext, placeholder='Buscar…', allowNew=true}) {
+  const d = useTheme()==='dark';
+  const [q, setQ]       = useState(value||'');
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const ref = useRef();
+
+  useEffect(()=>{ setQ(value||''); }, [value]);
+
+  useEffect(()=>{
+    const fn = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', fn);
+    return ()=>document.removeEventListener('mousedown', fn);
+  },[]);
+
+  const matches = useMemo(()=>{
+    if(!q.trim()) return options.slice(0,8);
+    const lq = q.toLowerCase();
+    return options.filter(n=>n.toLowerCase().includes(lq)).slice(0,10);
+  },[q, options]);
+
+  const select = n => { setQ(n); setOpen(false); onChange(n); };
+
+  return (
+    <div ref={ref} style={{position:'relative'}}>
+      <input value={q}
+        onChange={e=>{ setQ(e.target.value); setOpen(true); onChange(e.target.value); }}
+        onFocus={()=>{ setFocused(true); setOpen(true); }}
+        onBlur={()=>setFocused(false)}
+        placeholder={placeholder}
+        style={{width:'100%',padding:'10px 12px',borderRadius:10,fontSize:13,fontFamily:'inherit',
+          border:`1px solid ${focused?'#f97316':d?'#2a2a35':'#d4cfc9'}`,
+          background:d?'#0f0f13':'#f2f0eb',color:d?'#f0ede8':'#1a1a22'}}
+      />
+      {open && (matches.length>0 || (allowNew && q.trim())) && (
+        <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:100,
+          background:d?'#1a1a22':'#fff',border:`1px solid ${d?'#2a2a35':'#d4cfc9'}`,
+          borderRadius:10,marginTop:4,maxHeight:220,overflowY:'auto',boxShadow:'0 8px 24px rgba(0,0,0,0.2)'}}>
+          {matches.map(n=>(
+            <div key={n} onMouseDown={()=>select(n)}
+              style={{padding:'10px 14px',fontSize:13,cursor:'pointer',
+                borderBottom:`1px solid ${d?'#1f1f28':'#f0ede8'}`,
+                color:d?'#f0ede8':'#1a1a22'}}
+              onMouseEnter={e=>e.currentTarget.style.background=d?'#22222e':'#f7f5f2'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <span>{n}</span>
+              {getSubtext && getSubtext(n) && <span style={{fontSize:10,color:d?'#666':'#aaa',marginLeft:8}}>{getSubtext(n)}</span>}
+            </div>
+          ))}
+          {allowNew && q.trim() && !options.includes(q.trim()) && (
+            <div onMouseDown={()=>select(q.trim())}
+              style={{padding:'10px 14px',fontSize:12,cursor:'pointer',color:'#f97316',borderTop:matches.length?`1px solid ${d?'#2a2a35':'#e0ddd8'}`:'none'}}>
+              + Usar "{q.trim()}" como nuevo
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── NOMBRE AUTOCOMPLETE ───────────────────────────────────────────────────────
+function NombreAutocomplete({value, onChange, placeholder='Buscar nombre friendly…'}) {
+  const d = useTheme()==='dark';
+  const [q, setQ]       = useState(value||'');
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const ref = useRef();
+
+  // Close on outside click
+  useEffect(()=>{
+    const fn = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', fn);
+    return ()=>document.removeEventListener('mousedown', fn);
+  },[]);
+
+  const matches = useMemo(()=>{
+    if(!q.trim()) return ALL_NOMBRES.slice(0,8);
+    const lq = q.toLowerCase();
+    return ALL_NOMBRES.filter(n=>n.toLowerCase().includes(lq)).slice(0,10);
+  },[q]);
+
+  const select = n => {
+    setQ(n); setOpen(false); onChange(n);
+  };
+
+  return (
+    <div ref={ref} style={{position:'relative'}}>
+      <input value={q}
+        onChange={e=>{ setQ(e.target.value); setOpen(true); onChange(e.target.value); }}
+        onFocus={()=>{ setFocused(true); setOpen(true); }}
+        onBlur={()=>setFocused(false)}
+        placeholder={placeholder}
+        style={{width:'100%',padding:'10px 12px',borderRadius:10,fontSize:13,fontFamily:'inherit',
+          border:`1px solid ${focused?'#f97316':d?'#2a2a35':'#d4cfc9'}`,
+          background:d?'#0f0f13':'#f2f0eb',color:d?'#f0ede8':'#1a1a22'}}
+      />
+      {open && matches.length>0 && (
+        <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:100,
+          background:d?'#1a1a22':'#fff',border:`1px solid ${d?'#2a2a35':'#d4cfc9'}`,
+          borderRadius:10,marginTop:4,maxHeight:220,overflowY:'auto',boxShadow:'0 8px 24px rgba(0,0,0,0.2)'}}>
+          {matches.map(n=>(
+            <div key={n} onMouseDown={()=>select(n)}
+              style={{padding:'10px 14px',fontSize:13,cursor:'pointer',
+                borderBottom:`1px solid ${d?'#1f1f28':'#f0ede8'}`,
+                color:d?'#f0ede8':'#1a1a22'}}
+              onMouseEnter={e=>e.currentTarget.style.background=d?'#22222e':'#f7f5f2'}
+              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <span>{n}</span>
+              {NOMBRE_TO_CAT[n] && <span style={{fontSize:10,color:d?'#666':'#aaa',marginLeft:8}}>{NOMBRE_TO_CAT[n]}</span>}
+            </div>
+          ))}
+          <div onMouseDown={()=>{ onChange('__new__'); setOpen(false); }}
+            style={{padding:'10px 14px',fontSize:12,cursor:'pointer',color:'#f97316',borderTop:`1px solid ${d?'#2a2a35':'#e0ddd8'}`}}>
+            + Agregar "{q}" como nuevo nombre
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── CATEGORY MANAGER ──────────────────────────────────────────────────────────
+function CategoryManager({onClose, onTaxonomyChange}) {
+  const d = useTheme()==='dark';
+  const [, forceRerender] = useState(0);
+
+  // Local working copy so edits feel instant; commit to global + local storage on change
+  const [cats, setCats] = useState(()=>[...CATEGORIES]);
+  const [nombreToCat, setNombreToCat] = useState(()=>({...NOMBRE_TO_CAT}));
+  const [selected, setSelected] = useState(cats[0]||'');
+  const [renaming, setRenaming] = useState(false);
+  const [renameVal, setRenameVal] = useState('');
+  const [addingCat, setAddingCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [movingNombre, setMovingNombre] = useState(null); // nombre being moved
+  const [moveTarget, setMoveTarget] = useState('');
+
+  const catToNombres = useMemo(()=>{
+    const map = {};
+    for(const c of cats) map[c] = [];
+    for(const [nombre, cat] of Object.entries(nombreToCat)){
+      if(!map[cat]) map[cat]=[];
+      map[cat].push(nombre);
+    }
+    return map;
+  },[cats, nombreToCat]);
+
+  const commit = (newCats, newMap) => {
+    setCats(newCats);
+    setNombreToCat(newMap);
+    applyTaxonomyOverride({ categories: newCats, nombreToCat: newMap });
+    saveTaxonomy({ categories: newCats, nombreToCat: newMap });
+    onTaxonomyChange && onTaxonomyChange();
+  };
+
+  const handleAddCategory = () => {
+    const name = newCatName.trim();
+    if (!name) return;
+    if (cats.includes(name)) { alert('Esa categoría ya existe'); return; }
+    const newCats = [...cats, name].sort((a,b)=>a.localeCompare(b,'es'));
+    commit(newCats, nombreToCat);
+    setSelected(name);
+    setNewCatName('');
+    setAddingCat(false);
+  };
+
+  const handleRename = () => {
+    const name = renameVal.trim();
+    if (!name || name === selected) { setRenaming(false); return; }
+    if (cats.includes(name)) { alert('Ya existe una categoría con ese nombre'); return; }
+    const newCats = cats.map(c => c === selected ? name : c).sort((a,b)=>a.localeCompare(b,'es'));
+    const newMap = {...nombreToCat};
+    for (const k of Object.keys(newMap)) if (newMap[k] === selected) newMap[k] = name;
+    commit(newCats, newMap);
+    setSelected(name);
+    setRenaming(false);
+  };
+
+  const handleDeleteCategory = () => {
+    const count = (catToNombres[selected]||[]).length;
+    if (!confirm(count > 0
+      ? `"${selected}" tiene ${count} nombres asignados. Se moverán a "Otros". ¿Continuar?`
+      : `¿Eliminar la categoría "${selected}"?`)) return;
+    const newCats = cats.filter(c => c !== selected);
+    const newMap = {...nombreToCat};
+    for (const k of Object.keys(newMap)) if (newMap[k] === selected) newMap[k] = 'Otros';
+    if (!newCats.includes('Otros')) newCats.push('Otros');
+    commit(newCats.sort((a,b)=>a.localeCompare(b,'es')), newMap);
+    setSelected(newCats[0]||'');
+  };
+
+  const handleMoveNombre = () => {
+    if (!movingNombre || !moveTarget) return;
+    const newMap = {...nombreToCat, [movingNombre]: moveTarget};
+    commit(cats, newMap);
+    setMovingNombre(null);
+    setMoveTarget('');
+  };
+
+  return (
+    <Modal title="Editor de categorías" onClose={onClose}>
+      <div style={{fontSize:12,color:d?'#888':'#777',marginBottom:14}}>
+        Las categorías se asignan automáticamente al elegir un nombre friendly. Podés renombrar, crear, eliminar o mover nombres entre categorías.
+      </div>
+
+      <button onClick={()=>{ if(confirm('Esto actualizará la categoría de TODAS tus compras y catálogo según la configuración actual. ¿Continuar?')) onTaxonomyChange && onTaxonomyChange(); }}
+        style={{width:'100%',padding:'10px 0',borderRadius:10,fontSize:12,fontWeight:600,marginBottom:10,
+          background:d?'#1a2a3a':'#e8f0ff',border:`1px solid ${d?'#2a4a6a':'#b8d4f0'}`,color:'#60a5fa'}}>
+        🔄 Reaplicar categorías a todas las compras existentes
+      </button>
+
+      <button onClick={async ()=>{
+        if(!confirm('Esto borra tu configuración de categorías personalizada y restaura las 15 categorías nuevas (Almacén y Secos, Higiene Personal, etc). ¿Continuar?')) return;
+        await dbDelete('settings', 'taxonomy').catch(()=>{});
+        CATEGORIES = [...CATEGORIES_SEED];
+        NOMBRE_TO_CAT = {...NOMBRE_TO_CAT_SEED};
+        ALL_NOMBRES = [...ALL_NOMBRES_SEED];
+        setCats([...CATEGORIES]);
+        setNombreToCat({...NOMBRE_TO_CAT});
+        setSelected(CATEGORIES[0]||'');
+        onTaxonomyChange && onTaxonomyChange();
+        alert('Categorías restablecidas. Ahora tocá "Reaplicar" arriba para actualizar tus compras existentes.');
+      }}
+        style={{width:'100%',padding:'10px 0',borderRadius:10,fontSize:12,fontWeight:600,marginBottom:16,
+          background:d?'#2a1a00':'#fff3e0',border:`1px solid ${d?'#5a3a10':'#ffd9a0'}`,color:'#f97316'}}>
+        ♻️ Restablecer a las 15 categorías nuevas
+      </button>
+
+      {/* Category chips + add button */}
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16,alignItems:'center'}}>
+        {cats.map(c=>(
+          <button key={c} onClick={()=>{setSelected(c);setRenaming(false);}}
+            style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px solid ${selected===c?'#f97316':d?'#2a2a35':'#d4cfc9'}`,
+              background:selected===c?'#f97316':d?'#1a1a22':'#f2f0eb',
+              color:selected===c?'#0f0f13':d?'#888':'#666'}}>
+            {c}
+          </button>
+        ))}
+        {!addingCat ? (
+          <button onClick={()=>setAddingCat(true)}
+            style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px dashed ${d?'#3a3a45':'#c4bfb9'}`,background:'transparent',color:'#f97316'}}>
+            + Nueva
+          </button>
+        ) : (
+          <div style={{display:'flex',gap:4}}>
+            <input value={newCatName} onChange={e=>setNewCatName(e.target.value)} placeholder="Nombre"
+              onKeyDown={e=>e.key==='Enter'&&handleAddCategory()}
+              autoFocus
+              style={{padding:'5px 8px',borderRadius:8,fontSize:11,border:'1px solid #f97316',background:d?'#0f0f13':'#fff',color:d?'#f0ede8':'#1a1a22',width:100}}/>
+            <button onClick={handleAddCategory} style={{padding:'5px 8px',borderRadius:8,fontSize:11,background:'#f97316',border:'none',color:'#0f0f13'}}>✓</button>
+            <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{padding:'5px 8px',borderRadius:8,fontSize:11,background:T.inactBg(d),border:'none',color:T.muted(d)}}>✕</button>
+          </div>
+        )}
+      </div>
+
+      {selected && (
+        <div style={{background:d?'#0f0f13':'#f7f5f2',borderRadius:12,padding:'14px 16px',border:`1px solid ${d?'#2a2a35':'#e0ddd8'}`}}>
+          {/* Header with rename/delete actions */}
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+            {!renaming ? (
+              <>
+                <div style={{fontSize:13,color:'#f97316',fontWeight:600,flex:1}}>{selected}</div>
+                <button onClick={()=>{setRenaming(true);setRenameVal(selected);}}
+                  style={{fontSize:11,padding:'4px 9px',borderRadius:7,background:T.inactBg(d),border:`1px solid ${T.inactBdr(d)}`,color:T.muted(d)}}>
+                  ✎ Renombrar
+                </button>
+                <button onClick={handleDeleteCategory}
+                  style={{fontSize:11,padding:'4px 9px',borderRadius:7,background:d?'#2a1a1a':'#fff5f5',border:'1px solid #5a2a2a',color:'#f87171'}}>
+                  Eliminar
+                </button>
+              </>
+            ) : (
+              <>
+                <input value={renameVal} onChange={e=>setRenameVal(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&handleRename()}
+                  autoFocus
+                  style={{flex:1,padding:'6px 10px',borderRadius:8,fontSize:12,border:'1px solid #f97316',background:d?'#1a1a22':'#fff',color:d?'#f0ede8':'#1a1a22'}}/>
+                <button onClick={handleRename} style={{fontSize:11,padding:'6px 10px',borderRadius:7,background:'#f97316',border:'none',color:'#0f0f13'}}>Guardar</button>
+                <button onClick={()=>setRenaming(false)} style={{fontSize:11,padding:'6px 10px',borderRadius:7,background:T.inactBg(d),border:'none',color:T.muted(d)}}>✕</button>
+              </>
+            )}
+          </div>
+
+          {/* Nombres in this category */}
+          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+            {(catToNombres[selected]||[]).sort().map(n=>(
+              <div key={n} style={{display:'flex',alignItems:'center',gap:4,
+                padding:'4px 6px 4px 10px',borderRadius:20,fontSize:12,
+                background:d?'#1a3020':'#e8f5ee',color:'#4ade80',border:`1px solid ${d?'#2a4a2a':'#b8e8c8'}`}}>
+                <span>{n}</span>
+                <button onClick={()=>{setMovingNombre(n);setMoveTarget('');}}
+                  title="Mover a otra categoría"
+                  style={{background:'none',border:'none',color:'#4ade80',fontSize:11,cursor:'pointer',opacity:0.7,padding:'0 2px'}}>
+                  ⇄
+                </button>
+              </div>
+            ))}
+            {!(catToNombres[selected]||[]).length && (
+              <span style={{fontSize:12,color:d?'#555':'#aaa'}}>Sin nombres asignados</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Move-nombre mini dialog */}
+      {movingNombre && (
+        <div style={{marginTop:14,padding:'12px 14px',borderRadius:10,background:d?'#1a1a2a':'#f0f0ff',border:`1px solid ${d?'#3a3a6a':'#c8c8f0'}`}}>
+          <div style={{fontSize:12,marginBottom:8,color:d?'#a0a0e0':'#5050a0'}}>
+            Mover <strong>{movingNombre}</strong> a:
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <Sel value={moveTarget} onChange={e=>setMoveTarget(e.target.value)} style={{flex:1}}>
+              <option value="">— Elegir categoría —</option>
+              {cats.filter(c=>c!==selected).map(c=><option key={c} value={c}>{c}</option>)}
+            </Sel>
+            <button onClick={handleMoveNombre} disabled={!moveTarget}
+              style={{padding:'8px 14px',borderRadius:8,fontSize:12,background:moveTarget?'#f97316':T.inactBg(d),border:'none',color:moveTarget?'#0f0f13':T.muted(d)}}>
+              Mover
+            </button>
+            <button onClick={()=>setMovingNombre(null)}
+              style={{padding:'8px 10px',borderRadius:8,fontSize:12,background:T.inactBg(d),border:'none',color:T.muted(d)}}>
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── CATALOGO ──────────────────────────────────────────────────────────────────
+function Catalogo({productsDict, setProductsDict}) {
+  const d = useTheme()==='dark';
+  const [q, setQ]               = useState('');
+  const [editItem, setEditItem]  = useState(null);
+  const [filterCat, setFilterCat]= useState('');
+
+  const safeDict = productsDict || {};
+  const list = useMemo(() => {
+    let arr = Object.values(safeDict);
+    if (filterCat) arr = arr.filter(p => p.category === filterCat);
+    if (q) {
+      const lq = q.toLowerCase();
+      arr = arr.filter(p => p.rawName.toLowerCase().includes(lq)||(p.nombre||'').toLowerCase().includes(lq)||(p.category||'').toLowerCase().includes(lq));
+    }
+    return arr.sort((a,b) => (a.nombre||a.rawName).localeCompare(b.nombre||b.rawName, 'es'));
+  }, [safeDict, q, filterCat]);
+
+  const cats = useMemo(() => [...new Set(Object.values(safeDict).map(p=>p.category).filter(Boolean))].sort(), [safeDict]);
+  const unassigned = Object.values(safeDict).filter(p=>!p.nombre).length;
+
+  const sizeLabel = p => p.packageSize ? `${p.packageSize}${p.packageSizeUnit||''}` : null;
+
+  return (
+    <div className="fade" style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:12}}>
+      {editItem && <CatalogoEditModal item={editItem} onSave={updated=>{setProductsDict(prev=>{const p=prev||{};const n={...p};n[updated.barcode]=updated;return n;});setEditItem(null);}} onDelete={bc=>{if(!confirm('Eliminar del catálogo?'))return;setProductsDict(prev=>{const p=prev||{};const n={...p};delete n[bc];return n;});setEditItem(null);}} onClose={()=>setEditItem(null)}/>}
+
+      {unassigned>0 && (
+        <div style={{background:T.warnBg(d),border:'1px solid #f97316',borderRadius:12,padding:'10px 14px',fontSize:12,color:'#f97316'}}>
+          ⚠ {unassigned} productos sin nombre asignado — estos no se auto-completarán al importar XML
+        </div>
+      )}
+
+      <Inp value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar producto, nombre, categoría…"/>
+
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+        <button onClick={()=>setFilterCat('')} style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px solid ${!filterCat?'#f97316':T.inactBdr(d)}`,background:!filterCat?'#f97316':T.inactBg(d),color:!filterCat?'#0f0f13':T.inactClr(d)}}>Todos</button>
+        {cats.map(c=>(
+          <button key={c} onClick={()=>setFilterCat(filterCat===c?'':c)} style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px solid ${filterCat===c?'#f97316':T.inactBdr(d)}`,background:filterCat===c?'#f97316':T.inactBg(d),color:filterCat===c?'#0f0f13':T.inactClr(d)}}>{c}</button>
+        ))}
+        <span style={{marginLeft:'auto',fontSize:11,color:T.sub(d)}}>{list.length} productos</span>
+      </div>
+
+      <div style={{...T.card(d),overflow:'hidden'}}>
+        {list.length===0 && <div style={{padding:28,textAlign:'center',color:T.sub(d),fontSize:13}}>{Object.keys(safeDict).length===0 ? 'Cargando catálogo…' : 'Sin resultados'}</div>}
+        {list.map((p,i)=>(
+          <div key={p.barcode} onClick={()=>setEditItem(p)}
+            style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',cursor:'pointer',borderBottom:i<list.length-1?`1px solid ${T.divider(d)}`:'none',transition:'background 0.15s'}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,color:T.text(d),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.rawName}</div>
+              <div style={{display:'flex',gap:5,marginTop:3,flexWrap:'wrap',alignItems:'center'}}>
+                {p.nombre
+                  ? <span className="badge" style={{background:T.okBg(d),color:'#4ade80'}}>{p.nombre}</span>
+                  : <span className="badge" style={{background:d?'#2a1500':'#fff3e0',color:'#f97316'}}>⚠ Sin asignar</span>
+                }
+                {p.category && <span className="badge" style={{background:T.inactBg(d),color:T.muted(d)}}>{p.category}</span>}
+                {sizeLabel(p) && <span className="badge" style={{background:d?'#1a2030':'#e8f0ff',color:'#60a5fa'}}>{sizeLabel(p)}</span>}
+              </div>
+            </div>
+            <div style={{color:T.sub(d),fontSize:11}}>✎</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CatalogoEditModal({item, onSave, onDelete, onClose}) {
+  const d = useTheme()==='dark';
+  const [nombre,    setNombre]   = useState(item.nombre||'');
+  const [newNombre, setNewNombre]= useState('');
+  const [useNew,    setUseNew]   = useState(false);
+  const [category,  setCategory] = useState(item.category||'');
+  const [pkgSize,   setPkgSize]  = useState(item.packageSize!=null?String(item.packageSize):'');
+  const [pkgUnit,   setPkgUnit]  = useState(item.packageSizeUnit||'');
+
+  const save = () => {
+    const finalNombre = useNew ? newNombre.trim() : nombre;
+    onSave({...item, nombre:finalNombre, category, packageSize:pkgSize?parseFloat(pkgSize):null, packageSizeUnit:pkgUnit||null});
+  };
+
+  return (
+    <Modal title="Editar producto del catálogo" onClose={onClose}>
+      <div style={{background:T.infoBg(d),borderRadius:10,padding:'11px 14px',marginBottom:18,border:`1px solid ${T.inactBdr(d)}`}}>
+        <div style={{fontSize:13,color:'#f97316',fontWeight:600,marginBottom:2}}>{item.rawName}</div>
+        {item.barcode&&!item.barcode.startsWith('name:')&&<div style={{fontSize:10,color:T.sub(d),marginTop:2}}>Código: {item.barcode}</div>}
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Nombre friendly</FieldLabel>
+        <Sel value={useNew?'__new__':nombre} onChange={e=>{
+          if(e.target.value==='__new__'){setUseNew(true);setNombre('');}
+          else{setUseNew(false);setNombre(e.target.value);if(NOMBRE_TO_CAT[e.target.value])setCategory(NOMBRE_TO_CAT[e.target.value]);}
+        }}>
+          <option value="">— Seleccionar —</option>
+          {ALL_NOMBRES.map(n=><option key={n} value={n}>{n}</option>)}
+          <option value="__new__">+ Nuevo nombre…</option>
+        </Sel>
+        {useNew&&<Inp value={newNombre} onChange={e=>setNewNombre(e.target.value)} placeholder="ej: Yoghurt" style={{marginTop:8,borderColor:'#f97316'}}/>}
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <FieldLabel>Categoría</FieldLabel>
+        <Sel value={category} onChange={e=>setCategory(e.target.value)}>
+          <option value="">— Seleccionar —</option>
+          {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+        </Sel>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+        <div>
+          <FieldLabel>Tamaño del envase</FieldLabel>
+          <Inp value={pkgSize} onChange={e=>setPkgSize(e.target.value)} type="number" step="0.001" placeholder="ej: 1 / 0.5 / 0.6"/>
+        </div>
+        <div>
+          <FieldLabel>Unidad del envase</FieldLabel>
+          <Sel value={pkgUnit} onChange={e=>setPkgUnit(e.target.value)}>
+            <option value="">— N/A —</option>
+            {['kg','g','L','ml','rollos','UNI'].map(u=><option key={u}>{u}</option>)}
+          </Sel>
+        </div>
+      </div>
+
+      <div style={{fontSize:11,color:T.sub(d),marginBottom:16,padding:'8px 12px',background:T.infoBg(d),borderRadius:8,border:`1px solid ${T.inactBdr(d)}`}}>
+        💡 La próxima vez que importes un XML con este producto, se completará automáticamente.
+      </div>
+
+      <div style={{display:'flex',gap:10}}>
+        <Btn onClick={save} style={{flex:2}}>Guardar</Btn>
+        <Btn onClick={()=>onDelete(item.barcode)} variant="danger" style={{flex:1}}>Eliminar</Btn>
+      </div>
+    </Modal>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [theme,setTheme] = useState(()=>{ try{ return localStorage.getItem(LS_THEME)||'dark'; }catch{ return 'dark'; } });
+  const [palKey,setPalKey] = useState(()=>getPalKey());
+  const setPalette = k => { PAL=PALETTES[k]||PALETTES.earthy; setPalKey(k); saveSetting('palette', k); };
+  const d = theme==='dark';
+  const isDesktop = useIsDesktop();
+  useEffect(()=>{
+    document.body.style.background = T.bg(d);
+    const meta = document.getElementById('theme-color-meta');
+    if(meta) meta.content = T.bg(d);
+    try{ localStorage.setItem(LS_THEME,theme); }catch{}
+  },[theme,d]);
+
+  const [purchases,setPurchases]       = useState([]);
+  const [selectedYear,setSelectedYear] = useState(null); // null = "Todos los años" until first load sets default
+  const [productsDict,setProductsDict] = useState({});
+  const productsDictRef = useRef({});
+  const [loading,setLoading]           = useState(true);
+  // Keep a ref in sync so ImportModal always sees the latest catalogue
+  useEffect(() => { productsDictRef.current = productsDict; }, [productsDict]);
+  const [taxonomyVersion,setTaxonomyVersion] = useState(0);
+  const [loadError,setLoadError]       = useState('');
+  const [syncing,setSyncing]           = useState(false);
+  const [toast,setToast]               = useState('');
+  const purchasesRef = useRef([]);
+  useEffect(() => { purchasesRef.current = purchases; }, [purchases]);
+
+  // ── Load everything from local storage (IndexedDB) ───────────────────────────
+  const loadAll = useCallback(async () => {
+    const [ps, pd, themeSetting, palSetting, taxonomy] = await Promise.all([
+      loadPurchases(),
+      loadProductsDict(),
+      loadSetting('theme'),
+      loadSetting('palette'),
+      loadTaxonomy(),
+    ]);
+    if (taxonomy) { applyTaxonomyOverride(taxonomy); setTaxonomyVersion(v=>v+1); }
+    // Lightweight product dict built from NOMBRE_TO_CAT for first-run seeding
+    const seedPd = Object.fromEntries(
+      Object.entries(NOMBRE_TO_CAT).map(([nombre, category]) => {
+        const key = 'name:' + nombre.toLowerCase();
+        return [key, {barcode: key, rawName: nombre, nombre, category, packageSize: null, packageSizeUnit: null}];
+      })
+    );
+    const finalPs = ps && ps.length > 0 ? ps : [];
+    const finalPd = pd && Object.keys(pd).length > 0 ? pd : seedPd;
+    if (!pd || Object.keys(pd).length === 0) await saveProductsDict(seedPd);
+    setPurchases(finalPs);
+    setProductsDict(finalPd);
+    const yrs = [...new Set(finalPs.map(p => yearOf(p.date)))];
+    if (yrs.length > 0) setSelectedYear(Math.max(...yrs));
+    if (themeSetting) setTheme(themeSetting);
+    if (palSetting) { PAL = getPal(palSetting); setPalKey(palSetting); }
+  }, []);
+
+  useEffect(()=>{
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!window.indexedDB) throw new Error('Este navegador no soporta almacenamiento local (IndexedDB).');
+        requestPersistence();
+        await loadAll();
+      } catch(e) {
+        console.error('Init error:', e);
+        if (!cancelled) setLoadError('Error: ' + (e.message || e.toString()));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Automatic daily backup: first interaction of each day downloads a JSON ────
+  // (Runs on a user gesture so browsers allow the download.)
+  useEffect(() => {
+    if (loading) return;
+    let busy = false;
+    const handler = async () => {
+      if (busy) return;
+      const key = localDayKey();
+      let last = null;
+      try { last = localStorage.getItem(LS_LAST_BACKUP); } catch {}
+      if (last === key) return;
+      if (!purchasesRef.current.length) return; // nothing to back up yet
+      busy = true;
+      try {
+        const payload = await buildBackupPayload();
+        downloadJSON(payload, `mercado2026_backup_${key}.json`);
+        try { localStorage.setItem(LS_LAST_BACKUP, key); } catch {}
+        setToast('💾 Backup diario descargado');
+        setTimeout(() => setToast(''), 3500);
+      } catch(e) { console.error('auto-backup:', e); }
+      busy = false;
+    };
+    const evts = ['pointerup', 'keydown', 'touchend', 'click'];
+    evts.forEach(ev => window.addEventListener(ev, handler, { capture: true, passive: true }));
+    return () => evts.forEach(ev => window.removeEventListener(ev, handler, { capture: true }));
+  }, [loading]);
+
+  // Navigation stack: each entry is {view, catName?, nombreItem?}
+  const [view,setView]           = useState('dashboard');
+  const [selectedCat,setSCat]    = useState(null);   // category name string
+  const [selectedNombre,setSNombre] = useState(null); // nombre summary object
+  const [editingP,setEditingP]   = useState(null);
+  const [showImport,setShowImport] = useState(false);
+  const [showAddManual,setShowAddManual] = useState(false);
+  const [showQR,setShowQR] = useState(false);
+  const [showCatMgr,setShowCatMgr] = useState(false);
+  const [showCompare,setShowCompare]   = useState(false);
+  const [compareInitial,setCompareInitial] = useState('');
+  const [showBackup,setShowBackup] = useState(false);
+
+  const availableYears = useMemo(() => {
+    const years = new Set(purchases.map(p => yearOf(p.date)));
+    return [...years].sort((a,b) => b - a); // newest first
+  }, [purchases]);
+
+  const filteredPurchases = useMemo(() => {
+    if (selectedYear == null) return purchases; // "Todos" or not yet initialized
+    return purchases.filter(p => yearOf(p.date) === selectedYear);
+  }, [purchases, selectedYear]);
+
+  const usedIds    = useMemo(()=>new Set(purchases.map(p=>p.invoiceId)),[purchases]);
+  const uncatCount = useMemo(()=>purchases.filter(p=>!p.category).length,[purchases]);
+  const allCategories = useMemo(()=>{
+    const fromData = [...new Set(purchases.map(p=>p.category).filter(Boolean))];
+    const merged   = [...new Set([...CATEGORIES,...fromData])].sort((a,b)=>a.localeCompare(b,'es'));
+    return merged;
+  },[purchases]);
+
+  const handleImport  = useCallback(async ({purchases:np})=>{
+    setSyncing(true);
+    try {
+      // Save all purchases in one batched call (handles both single XML and ZIP batch)
+      await savePurchases(np);
+      // Single atomic state update
+      setPurchases(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newOnes = np.filter(p => !existingIds.has(p.id));
+        return [...prev, ...newOnes];
+      });
+
+      // Migrate name-keyed catalogue entries to real barcodes
+      const migrations = np.filter(p => p._migrateFromKey && p.barcode);
+      if (migrations.length > 0) {
+        const oldKeysToDelete = [];
+        setProductsDict(prev => {
+          const next = {...(prev||{})};
+          for (const p of migrations) {
+            const old = next[p._migrateFromKey];
+            if (!old) continue;
+            next[p.barcode] = {
+              ...old,
+              barcode: p.barcode,
+              rawName: p.rawName,
+              packageSize: old.packageSize ?? p.packageSize,
+              packageSizeUnit: old.packageSizeUnit ?? p.packageSizeUnit,
+            };
+            delete next[p._migrateFromKey];
+            oldKeysToDelete.push(p._migrateFromKey);
+          }
+          saveProductsDict(next).catch(e=>console.error('migrate saveProductsDict:', e));
+          return next;
+        });
+        for (const oldKey of oldKeysToDelete) {
+          dbDelete('products_dict', oldKey).catch(()=>{});
+        }
+      }
+    } catch(e) {
+      alert('Error al guardar: ' + e.message);
+      console.error(e);
+    }
+    setSyncing(false);
+  },[]);
+  const handleSave    = useCallback(async u=>{
+    setSyncing(true);
+    try {
+      // Compute propagated purchases synchronously BEFORE any state update
+      // so we can save them all in one call
+      const propagated = purchases
+        .filter(p => p.id !== u.id && p.rawName === u.rawName && (
+          p.nombre !== u.nombre ||
+          p.category !== u.category ||
+          p.packageSize !== u.packageSize ||
+          p.packageSizeUnit !== u.packageSizeUnit
+        ))
+        .map(p => ({
+          ...p,
+          nombre: u.nombre,
+          category: u.category,
+          packageSize: u.packageSize ?? p.packageSize,
+          packageSizeUnit: u.packageSizeUnit ?? p.packageSizeUnit,
+        }));
+
+      // Save first — all in one batch
+      await savePurchases([u, ...propagated]);
+
+      // Then update local state
+      const allUpdated = [u, ...propagated];
+      const updatedById = Object.fromEntries(allUpdated.map(p => [p.id, p]));
+      setPurchases(prev => prev.map(p => updatedById[p.id] || p));
+      setEditingP(null);
+
+      // Update catalogue so future imports auto-fill this rawName
+      if (u.nombre || u.category) {
+        const nameKey = 'name:' + u.rawName.toLowerCase();
+        // Build just the entries that changed — don't save the whole dict
+        const entriesToSave = [];
+        setProductsDict(prev => {
+          const next = { ...(prev||{}) };
+          const existing = next[u.barcode] || next[nameKey] || {};
+          const entry = {
+            ...existing,
+            barcode: u.barcode || nameKey,
+            rawName: u.rawName,
+            nombre: u.nombre || existing.nombre,
+            category: u.category || existing.category,
+            packageSize: u.packageSize ?? existing.packageSize ?? null,
+            packageSizeUnit: u.packageSizeUnit ?? existing.packageSizeUnit ?? null,
+          };
+          if (u.barcode && u.barcode !== nameKey) {
+            next[u.barcode] = entry;
+            entriesToSave.push(entry);
+          }
+          const nameEntry = {...entry, barcode: nameKey};
+          next[nameKey] = nameEntry;
+          entriesToSave.push(nameEntry);
+          return next;
+        });
+        // Upsert just these 1-2 catalogue entries directly
+        try {
+          await dbUpsert('products_dict', entriesToSave.map(e => ({ barcode: e.barcode, data: e })));
+        } catch(e) {
+          alert('Error al guardar en catálogo: ' + e.message);
+          console.error('catalogue save error:', e);
+        }
+      }
+
+      if (propagated.length > 0) {
+        console.log(`Propagated nombre/category to ${propagated.length} other purchases`);
+      }
+    } catch(e) {
+      alert('Error al guardar: ' + e.message);
+      console.error(e);
+    }
+    setSyncing(false);
+  },[purchases]);
+  const handleDelete  = useCallback(async id=>{
+    setSyncing(true);
+    await deletePurchase(id);
+    setPurchases(prev=>prev.filter(p=>p.id!==id));
+    setEditingP(null);
+    setSyncing(false);
+  },[]);
+  const handleRestore = useCallback(async data=>{
+    setSyncing(true);
+    try {
+      await restoreFromBackup(data);
+      await loadAll();
+      setShowBackup(false);
+    } catch(e) {
+      alert('Error al restaurar: ' + e.message);
+      console.error(e);
+    }
+    setSyncing(false);
+  },[loadAll]);
+
+  const handleAddNew = useCallback(()=>{
+    setEditingP({
+      id: uid(),
+      invoiceId: 'manual-'+uid(),
+      date: today(),
+      store: '',
+      rawName: '',
+      barcode: '',
+      category: '',
+      nombre: '',
+      packageSize: null,
+      packageSizeUnit: null,
+      qty: 1,
+      unit: 'UNI',
+      unitPrice: 0,
+      total: 0,
+      _isNew: true,
+    });
+  },[]);
+
+  const handleAddManual = useCallback(async p=>{
+    setSyncing(true);
+    try {
+      await savePurchases([p]);
+      setPurchases(prev=>[...prev, p]);
+      // Add/update catalogue entry too, so future autocomplete picks it up
+      setProductsDict(prev=>{
+        const next = {...(prev||{})};
+        if (!next[p.barcode]) {
+          next[p.barcode] = {
+            barcode: p.barcode, rawName: p.rawName, nombre: p.nombre,
+            category: p.category, packageSize: p.packageSize, packageSizeUnit: p.packageSizeUnit,
+          };
+          saveProductsDict(next).catch(e=>console.error('saveProductsDict:', e));
+        }
+        return next;
+      });
+      setShowAddManual(false);
+    } catch(e) {
+      alert('Error al guardar: ' + e.message);
+      console.error(e);
+    }
+    setSyncing(false);
+  },[]);
+
+  const handleReapplyTaxonomy = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const updated = purchases.map(p => {
+        const cat = NOMBRE_TO_CAT[p.nombre];
+        return cat && cat !== p.category ? {...p, category: cat} : p;
+      });
+      const changed = updated.filter((p,i) => p.category !== purchases[i].category);
+      if (changed.length > 0) {
+        await savePurchases(changed);
+        setPurchases(updated);
+      }
+      // Also reapply to the catalogue itself
+      setProductsDict(prev => {
+        const next = {...(prev||{})};
+        let dictChanged = false;
+        for (const key of Object.keys(next)) {
+          const entry = next[key];
+          const cat = NOMBRE_TO_CAT[entry.nombre];
+          if (cat && cat !== entry.category) {
+            next[key] = {...entry, category: cat};
+            dictChanged = true;
+          }
+        }
+        if (dictChanged) saveProductsDict(next).catch(e=>console.error('saveProductsDict:', e));
+        return next;
+      });
+      alert(`Categorías actualizadas en ${changed.length} compras.`);
+    } catch(e) {
+      alert('Error al reaplicar categorías: ' + e.message);
+      console.error(e);
+    }
+    setSyncing(false);
+  }, [purchases]);
+
+  const handleEraseAll = useCallback(async () => {
+    setSyncing(true);
+    try {
+      await deleteAllPurchases();
+      setPurchases([]);
+    } catch(e) {
+      alert('Error al borrar: ' + e.message);
+    }
+    setSyncing(false);
+  }, []);
+
+  const handleSetProductsDict = useCallback(updater=>{
+    setProductsDict(prev=>{
+      const old = prev||{};
+      const next = typeof updater==='function' ? updater(old) : updater;
+      // Find only the entries that changed and upsert just those
+      const changed = Object.values(next).filter(e => {
+        const o = old[e.barcode];
+        return !o || JSON.stringify(o) !== JSON.stringify(e);
+      });
+      const removed = Object.keys(old).filter(k => !next[k]);
+      if (changed.length > 0) {
+        dbUpsert('products_dict', changed.map(e => ({ barcode: e.barcode, data: e })))
+          .catch(e => console.error('saveProductsDict:', e));
+      }
+      for (const k of removed) {
+        dbDelete('products_dict', k).catch(() => {});
+      }
+      return next;
+    });
+  },[]);
+
+  // Live-recompute selectedNombre when purchases change
+  const liveNombre = useMemo(()=>{
+    if(!selectedNombre||!selectedCat) return null;
+    const summary = buildNombreSummary(filteredPurchases, selectedCat);
+    return summary.find(n=>n.name===selectedNombre)||null;
+  },[filteredPurchases,selectedCat,selectedNombre]);
+  // For direct Productos tab navigation (no category filter)
+  const liveNombreGlobal = useMemo(()=>{
+    if(!selectedNombre) return null;
+    const summary = buildNombreSummary(filteredPurchases, null);
+    return summary.find(n=>n.name===selectedNombre)||null;
+  },[filteredPurchases,selectedNombre]);
+
+  const NAV = [{id:'dashboard',label:'📊',full:'Resumen'},{id:'cats',label:'🏷',full:'Categorías'},{id:'productos',label:'🥦',full:'Productos'},{id:'compras',label:'🧾',full:'Compras'},{id:'catalogo',label:'📋',full:'Catálogo'}];
+
+  const goNav = id => { setView(id); setSCat(null); setSNombre(null); };
+
+  return (
+    <ThemeCtx.Provider value={theme}>
+      <div style={{minHeight:'100vh',background:T.bg(d),color:T.text(d),fontFamily:"'DM Mono','Courier New',monospace",maxWidth:isDesktop?900:480,margin:'0 auto',paddingBottom:isDesktop?40:80,transition:'background 0.3s,color 0.3s,max-width 0.2s'}}>
+
+        {showImport && <ImportModal onImport={handleImport} onClose={()=>setShowImport(false)} usedIds={usedIds} productsDict={productsDict} productsDictRef={productsDictRef}/>}
+      {showAddManual && <AddModal onAdd={handleAddManual} onClose={()=>setShowAddManual(false)} allCategories={allCategories} productsDict={productsDict}/>}
+      {showQR && <QRScanModal onClose={()=>setShowQR(false)}/>}
+        {editingP   && <EditModal purchase={editingP} onSave={handleSave} onDelete={handleDelete} onClose={()=>setEditingP(null)} allCategories={allCategories}/>}
+        {showBackup && <BackupModal purchases={purchases} onRestore={handleRestore} onEraseAll={handleEraseAll} onClose={()=>setShowBackup(false)}/>}
+      {showCatMgr && <CategoryManager onClose={()=>setShowCatMgr(false)} onTaxonomyChange={handleReapplyTaxonomy}/>}
+      {showCompare && <CompareModal purchases={purchases} initialA={compareInitial} onClose={()=>{setShowCompare(false);setCompareInitial('');}}/>}
+
+        {/* Header */}
+        <div style={{padding:'18px 20px 14px',borderBottom:`1px solid ${T.hdrBdr(d)}`,display:'flex',alignItems:'center',gap:8}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,letterSpacing:-0.5}}>
+              <span style={{color:'#f97316'}}>COMPRAS</span>
+            </div>
+            <div style={{fontSize:11,color:T.sub(d),marginTop:2,letterSpacing:0.5}}>Gastos del hogar</div>
+          </div>
+          {/* Dropdown menu */}
+          {(()=>{
+            const [open,setOpen] = React.useState(false);
+            const ref = React.useRef();
+            React.useEffect(()=>{
+              const fn = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+              document.addEventListener('mousedown',fn);
+              return ()=>document.removeEventListener('mousedown',fn);
+            },[]);
+            const item = (icon,label,action) => (
+              <button key={label} onClick={()=>{setOpen(false);action();}}
+                style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',background:'none',border:'none',
+                  width:'100%',textAlign:'left',cursor:'pointer',color:T.text(d),fontSize:13,
+                  borderBottom:`1px solid ${T.divider(d)}`}}
+                onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+                onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                <span style={{fontSize:18,width:24,textAlign:'center'}}>{icon}</span>{label}
+              </button>
+            );
+            return (
+              <div ref={ref} style={{position:'relative'}}>
+                <button onClick={()=>setOpen(o=>!o)}
+                  style={{background:open?'#f97316':T.inactBg(d),border:`1px solid ${open?'#f97316':T.inactBdr(d)}`,
+                    borderRadius:10,fontSize:20,width:38,height:38,display:'flex',alignItems:'center',
+                    justifyContent:'center',color:open?'#0f0f13':T.text(d),cursor:'pointer'}}>
+                  ⋮
+                </button>
+                {open && (
+                  <div style={{position:'absolute',top:44,right:0,zIndex:200,minWidth:220,
+                    background:d?'#1a1a22':'#fff',borderRadius:14,boxShadow:'0 8px 32px rgba(0,0,0,0.25)',
+                    border:`1px solid ${T.inactBdr(d)}`,overflow:'hidden'}}>
+                    {item('✏️','Agregar compra manual',()=>setShowAddManual(true))}
+                    {item('📷','Escanear QR',()=>setShowQR(true))}
+                    {item('🏷','Editor de categorías',()=>setShowCatMgr(true))}
+                    {item('💾','Backup y restauración',()=>setShowBackup(true))}
+                    {item(d?'☀️':'🌙',d?'Modo claro':'Modo oscuro',()=>setTheme(d?'light':'dark'))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          <button onClick={()=>setShowImport(true)}
+            style={{background:'#f97316',border:'none',borderRadius:10,color:'#0f0f13',fontSize:12,fontWeight:700,padding:'9px 14px',display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}>
+            <span style={{fontSize:16,lineHeight:1}}>+</span> XML
+          </button>
+        </div>
+
+        {/* Nav */}
+        <div style={{display:'flex',gap:isDesktop?10:6,padding:isDesktop?'14px 28px':'10px 20px',background:T.navBg(d),position:'sticky',top:0,zIndex:50,borderBottom:`1px solid ${T.hdrBdr(d)}`}}>
+          {NAV.map(n=>{
+            const active = view===n.id||(n.id==='cats'&&(view==='nombres'||view==='nombre-detail'))||(n.id==='productos'&&view==='producto-detail');
+            return (
+              <button key={n.id} onClick={()=>goNav(n.id)}
+                style={isDesktop ? {
+                  flex:'0 1 auto',padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:600,letterSpacing:0.3,textTransform:'uppercase',
+                  border:`1px solid ${active?'#f97316':T.inactBdr(d)}`,
+                  background:active?'#f97316':T.inactBg(d),
+                  color:active?'#0f0f13':T.inactClr(d),
+                  transition:'all 0.2s',position:'relative',display:'flex',alignItems:'center',gap:8,cursor:'pointer'
+                } : {
+                  flex:1,padding:'6px 2px',borderRadius:10,fontSize:active?11:13,fontWeight:500,letterSpacing:0,textTransform:'uppercase',
+                  border:`1px solid ${active?'#f97316':T.inactBdr(d)}`,
+                  background:active?'#f97316':T.inactBg(d),
+                  color:active?'#0f0f13':T.inactClr(d),
+                  transition:'all 0.2s',position:'relative'
+                }}>
+                {isDesktop ? (
+                  <>
+                    <span style={{fontSize:15}}>{n.label}</span>
+                    <span>{n.full}</span>
+                  </>
+                ) : (
+                  <>
+                    <div style={{fontSize:14,lineHeight:1}}>{n.label}</div>
+                    {active && <div style={{fontSize:9,marginTop:2,letterSpacing:0.3}}>{n.full}</div>}
+                  </>
+                )}
+                {n.id==='compras'&&uncatCount>0&&(
+                  <span style={{position:'absolute',top:-5,right:-5,background:'#ef4444',borderRadius:'50%',minWidth:17,height:17,fontSize:9,fontWeight:700,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 3px'}}>
+                    {uncatCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Year selector — only shown if there's more than one year of data */}
+        {availableYears.length > 1 && (view==='dashboard'||view==='cats'||view==='nombres'||view==='productos'||view==='producto-detail'||view==='nombre-detail') && (
+          <div style={{display:'flex',gap:6,padding:isDesktop?'10px 28px':'8px 20px',background:T.navBg(d),borderBottom:`1px solid ${T.hdrBdr(d)}`,overflowX:'auto'}}>
+            <button onClick={()=>setSelectedYear(null)}
+              style={{padding:'5px 12px',borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:'nowrap',
+                border:`1px solid ${selectedYear==null?'#f97316':T.inactBdr(d)}`,
+                background:selectedYear==null?'#f97316':T.inactBg(d),
+                color:selectedYear==null?'#0f0f13':T.inactClr(d)}}>
+              Todos los años
+            </button>
+            {availableYears.map(y => (
+              <button key={y} onClick={()=>setSelectedYear(y)}
+                style={{padding:'5px 12px',borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:'nowrap',
+                  border:`1px solid ${selectedYear===y?'#f97316':T.inactBdr(d)}`,
+                  background:selectedYear===y?'#f97316':T.inactBg(d),
+                  color:selectedYear===y?'#0f0f13':T.inactClr(d)}}>
+                {y}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Syncing indicator */}
+        {syncing && !loading && (
+          <div style={{position:'fixed',top:8,right:8,zIndex:500,background:'#f97316',borderRadius:20,padding:'4px 12px',fontSize:11,color:'#0f0f13',fontWeight:600,display:'flex',alignItems:'center',gap:6}}>
+            <div style={{width:10,height:10,border:'2px solid #0f0f13',borderTopColor:'transparent',borderRadius:'50%',animation:'spin 0.6s linear infinite'}}/>
+            Guardando… no cierres la página
+          </div>
+        )}
+
+        {loadError && (
+          <div style={{margin:'12px 20px',padding:'12px 14px',borderRadius:12,fontSize:12,background:d?'#2a1a1a':'#fff5f5',color:'#f87171',border:'1px solid #5a2a2a'}}>
+            ⚠ No se pudo abrir el almacenamiento local. {loadError}
+          </div>
+        )}
+
+        {toast && (
+          <div style={{position:'fixed',left:'50%',bottom:24,transform:'translateX(-50%)',zIndex:600,background:'#f97316',color:'#0f0f13',borderRadius:20,padding:'8px 16px',fontSize:12,fontWeight:600,boxShadow:'0 4px 20px rgba(0,0,0,0.3)'}}>
+            {toast}
+          </div>
+        )}
+
+        {view==='dashboard'     && <Dashboard purchases={filteredPurchases} onGoCats={()=>goNav('cats')} onGoProductos={n=>{ if(n){ setSNombre(n); setView('producto-detail'); } else goNav('productos'); }} onGoCompras={()=>goNav('compras')}/>}
+        {view==='cats'          && <CatList purchases={filteredPurchases} onSelectCat={cat=>{ setSCat(cat.name); setView('nombres'); }}/>}
+        {view==='productos'     && <NombreList purchases={filteredPurchases} catName={null} onBack={null} onSelectNombre={n=>{ setSNombre(n); setView('producto-detail'); }} onCompare={n=>{setCompareInitial(n);setShowCompare(true);}}/>}
+        {view==='producto-detail' && liveNombreGlobal && <NombreDetail nombreItem={liveNombreGlobal} onBack={()=>{ setSNombre(null); setView('productos'); }} onEditPurchase={setEditingP}/>}
+        {view==='nombres'       && selectedCat && <NombreList purchases={filteredPurchases} catName={selectedCat} onBack={()=>setView('cats')} onSelectNombre={n=>{ setSNombre(n); setView('nombre-detail'); }} onCompare={n=>{setCompareInitial(n);setShowCompare(true);}}/>}
+        {view==='nombre-detail' && liveNombre  && <NombreDetail nombreItem={liveNombre} onBack={()=>setView('nombres')} onEditPurchase={setEditingP}/>}
+        {view==='compras'       && <ComprasList purchases={purchases} onEdit={setEditingP} allCategories={allCategories} onAddNew={handleAddNew}/>}
+        {view==='catalogo'     && <Catalogo productsDict={productsDict||{}} setProductsDict={handleSetProductsDict}/>}
+      </div>
+    </ThemeCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
