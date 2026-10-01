@@ -368,6 +368,30 @@ const BACKUP_VERSION = 2;
 const uid = () => Math.random().toString(36).slice(2,10);
 const fmt = n => { if(!n)return"—"; return`₲${Math.round(n).toLocaleString('es-PY')}`; };
 const fmtFull = n => `₲${Math.round(n).toLocaleString('es-PY')}`;
+// "Todos los años": instead of summing every year into the same month, divide by
+// how many times each month has actually happened since the first purchase.
+// The month in progress only counts for the fraction of days already elapsed.
+function buildMonthWeights(purchases) {
+  const dates = purchases.map(p => p.date).filter(Boolean).sort();
+  if (!dates.length) return null;
+  const now = new Date();
+  const nowIdx = now.getFullYear() * 12 + now.getMonth();
+  const idxOf = dt => yearOf(dt) * 12 + monthOf(dt);
+  const start = idxOf(dates[0]);
+  const end = Math.max(nowIdx, idxOf(dates[dates.length - 1]));
+  const weights = Array(12).fill(0);
+  const years = new Set();
+  for (let i = start; i <= end; i++) {
+    const m = i % 12, y = Math.floor(i / 12);
+    let f = 1;
+    if (i === nowIdx) f = now.getDate() / new Date(y, m + 1, 0).getDate();
+    weights[m] += f;
+    years.add(y);
+  }
+  return { weights, nYears: years.size, effMonths: weights.reduce((a, b) => a + b, 0) };
+}
+// Per-month values -> per-month averages (info = null keeps the plain totals).
+const monthAvg = (arr, info) => info ? arr.map((v, i) => info.weights[i] >= 1 ? v / info.weights[i] : v) : arr;
 const monthOf = d => { try{ return new Date(d+'T12:00:00').getMonth(); }catch{return 0;} };
 const yearOf  = d => { try{ return new Date(d+'T12:00:00').getFullYear(); }catch{return new Date().getFullYear();} };
 
@@ -455,6 +479,7 @@ function parsePackageSize(name) {
     [/(\d+(?:[.,]\d+)?)\s*[Mm][Ll]/, m => [parseFloat(m[1].replace(',','.')) / 1000, 'L']],
     [/(\d+(?:[.,]\d+)?)\s*[Cc][Cc]/, m => [parseFloat(m[1].replace(',','.')) / 1000, 'L']],
     [/(\d+)\s*[Rr][Oo][Ll]{2}?/, m => [parseFloat(m[1]), 'rollos']],
+    [/(\d+(?:[.,]\d+)?)\s*(?:[Mm][Tt][Ss]?|[Mm][Ee][Tt][Rr][Oo][Ss]?)\b/, m => [parseFloat(m[1].replace(',','.')), 'metros']],
   ];
   for (const [pattern, extractor] of patterns) {
     const m = name.match(pattern);
@@ -688,7 +713,7 @@ function EditModal({purchase, onSave, onDelete, onClose, allCategories}) {
         <div>
           <FieldLabel>Unidad</FieldLabel>
           <Sel value={unit} onChange={e=>setUnit(e.target.value)}>
-            {['UNI','kg','g','L','ml'].map(u=><option key={u}>{u}</option>)}
+            {['UNI','kg','g','L','ml','rollos','metros'].map(u=><option key={u}>{u}</option>)}
           </Sel>
         </div>
       </div>
@@ -706,7 +731,7 @@ function EditModal({purchase, onSave, onDelete, onClose, allCategories}) {
           <FieldLabel>Unidad envase</FieldLabel>
           <Sel value={pkgUnit} onChange={e=>setPkgUnit(e.target.value)}>
             <option value="">— N/A —</option>
-            {['kg','g','L','ml','rollos','UNI'].map(u=><option key={u}>{u}</option>)}
+            {['kg','g','L','ml','rollos','metros','UNI'].map(u=><option key={u}>{u}</option>)}
           </Sel>
         </div>
       </div>
@@ -1221,7 +1246,7 @@ function AddModal({onAdd, onClose, allCategories, productsDict}) {
         <div>
           <FieldLabel>Unidad</FieldLabel>
           <Sel value={unit} onChange={e=>setUnit(e.target.value)}>
-            {['UNI','kg','g','L','ml'].map(u=><option key={u}>{u}</option>)}
+            {['UNI','kg','g','L','ml','rollos','metros'].map(u=><option key={u}>{u}</option>)}
           </Sel>
         </div>
       </div>
@@ -1240,7 +1265,7 @@ function AddModal({onAdd, onClose, allCategories, productsDict}) {
           <FieldLabel>Unidad envase</FieldLabel>
           <Sel value={pkgUnit} onChange={e=>setPkgUnit(e.target.value)}>
             <option value="">— N/A —</option>
-            {['kg','g','L','ml','rollos','UNI'].map(u=><option key={u}>{u}</option>)}
+            {['kg','g','L','ml','rollos','metros','UNI'].map(u=><option key={u}>{u}</option>)}
           </Sel>
         </div>
       </div>
@@ -1528,15 +1553,16 @@ function BackupModal({purchases, onRestore, onEraseAll, onClose}) {
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({purchases, onGoCats, onGoProductos, onGoCompras}) {
+function Dashboard({purchases, onGoCats, onGoProductos, onGoCompras, monthInfo}) {
   const d = useTheme()==='dark';
   const catSummary = useMemo(()=>buildCatSummary(purchases),[purchases]);
   const grandTotal = catSummary.reduce((a,b)=>a+b.total,0);
   const monthlyTotals = useMemo(()=>{
     const arr=Array(12).fill(0);
     for(const p of purchases) arr[monthOf(p.date)]+=p.total;
-    return arr;
-  },[purchases]);
+    return monthAvg(arr, monthInfo);
+  },[purchases, monthInfo]);
+  const isAvg    = !!monthInfo && monthInfo.nYears > 1;
   const activeM  = monthlyTotals.filter(v=>v>0);
   const maxM     = Math.max(...activeM,1);
   const bestIdx  = monthlyTotals.indexOf(Math.max(...monthlyTotals));
@@ -1564,7 +1590,7 @@ function Dashboard({purchases, onGoCats, onGoProductos, onGoCompras}) {
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
         <div style={{...T.card(d),padding:16}}>
           <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>Prom. mensual</div>
-          <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:'#4ade80'}}>{fmt(Math.round(grandTotal/Math.max(activeM.length,1)))}</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:'#4ade80'}}>{fmt(Math.round(grandTotal/(monthInfo ? Math.max(monthInfo.effMonths,1) : Math.max(activeM.length,1))))}</div>
         </div>
         <div style={{...T.card(d),padding:16}}>
           <div style={{fontSize:10,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>Mes más alto</div>
@@ -1574,7 +1600,8 @@ function Dashboard({purchases, onGoCats, onGoProductos, onGoCompras}) {
       </div>
 
       <div style={{...T.card(d),padding:20}}>
-        <div style={{fontSize:11,color:T.muted(d),letterSpacing:1,textTransform:'uppercase',marginBottom:16}}>Evolución mensual</div>
+        <div style={{fontSize:11,color:T.muted(d),letterSpacing:1,textTransform:'uppercase',marginBottom:isAvg?4:16}}>{isAvg?'Promedio por mes':'Evolución mensual'}</div>
+        {isAvg && <div style={{fontSize:10,color:T.sub(d),marginBottom:14}}>Promedio de {monthInfo.nYears} años · el mes en curso cuenta según los días transcurridos</div>}
         {MONTHS.map((m,i)=>monthlyTotals[i]>0?(
           <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
             <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
@@ -1648,7 +1675,7 @@ function CatList({purchases, onSelectCat}) {
 }
 
 // ── NOMBRE LIST (within a category) ──────────────────────────────────────────
-function NombreList({purchases, catName, onBack, onSelectNombre, onCompare}) {
+function NombreList({purchases, catName, onBack, onSelectNombre, onCompare, monthInfo}) {
   const d = useTheme()==='dark';
   const summary = useMemo(()=>buildNombreSummary(purchases, catName),[purchases,catName]);
   const catTotal = summary.reduce((a,b)=>a+b.total,0);
@@ -1660,8 +1687,8 @@ function NombreList({purchases, catName, onBack, onSelectNombre, onCompare}) {
   const months = useMemo(()=>{
     const arr=Array(12).fill(0);
     for(const p of (catName ? purchases.filter(p=>(p.category||'Sin categoría')===catName) : purchases)) arr[monthOf(p.date)]+=p.total;
-    return arr;
-  },[purchases,catName]);
+    return monthAvg(arr, monthInfo);
+  },[purchases,catName,monthInfo]);
   const maxM = Math.max(...months.filter(v=>v>0),1);
 
   return (
@@ -1676,7 +1703,7 @@ function NombreList({purchases, catName, onBack, onSelectNombre, onCompare}) {
 
       {/* Monthly chart */}
       <div style={{...T.card(d),padding:18}}>
-        <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:14}}>Por mes</div>
+        <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:14}}>{monthInfo && monthInfo.nYears>1 ? 'Promedio por mes' : 'Por mes'}</div>
         {MONTHS.map((m,i)=>months[i]>0?(
           <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:9}}>
             <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
@@ -1739,8 +1766,6 @@ function NombreList({purchases, catName, onBack, onSelectNombre, onCompare}) {
               <div style={{fontSize:10,color:T.sub(d),marginTop:1}}>{n.count} compra{n.count!==1?'s':''}</div>
               {(()=>{ const w=whatIfCheapest(n.purchases); return w ? <div style={{fontSize:9,color:'#4ade80',marginTop:1}}>-{fmt(w.savings)} posible</div> : null; })()}
             </div>
-            <button onClick={e=>{ e.stopPropagation(); onCompare && onCompare(n.name); }}
-              style={{background:'transparent',border:'none',fontSize:14,color:T.sub(d),padding:'4px 6px'}}>⚖️</button>
             <div style={{color:T.sub(d)}}>›</div>
           </div>
         ))}
@@ -1750,7 +1775,7 @@ function NombreList({purchases, catName, onBack, onSelectNombre, onCompare}) {
 }
 
 // ── NOMBRE DETAIL (individual purchases for a nombre) ────────────────────────
-function NombreDetail({nombreItem, onBack, onEditPurchase}) {
+function NombreDetail({nombreItem, onBack, onEditPurchase, monthInfo}) {
   const d = useTheme()==='dark';
   const [tab, setTab] = useState('gasto'); // gasto | cantidad | precio
   const ps = nombreItem.purchases.slice().sort((a,b)=>b.date.localeCompare(a.date));
@@ -1821,8 +1846,13 @@ function NombreDetail({nombreItem, onBack, onEditPurchase}) {
     return totals.map((t,i) => counts[i] > 0 ? t / counts[i] : null);
   }, [ps]);
 
-  const maxGasto   = Math.max(...nombreItem.months.filter(v=>v>0), 1);
-  const maxCant    = Math.max(...cantData.filter(v=>v>0), 1);
+  // Per-month display values (averages in "Todos los años"); totals keep using the raw sums.
+  const gastoDisp = useMemo(() => monthAvg(nombreItem.months, monthInfo), [nombreItem, monthInfo]);
+  const rawDisp   = useMemo(() => monthAvg(rawCountData, monthInfo), [rawCountData, monthInfo]);
+  const cantDisp  = useMemo(() => monthAvg(cantData, monthInfo), [cantData, monthInfo]);
+  const avgLbl    = monthInfo && monthInfo.nYears > 1 ? 'promedio ' : '';
+  const maxGasto   = Math.max(...gastoDisp.filter(v=>v>0), 1);
+  const maxCant    = Math.max(...cantDisp.filter(v=>v>0), 1);
   const maxPrecio  = Math.max(...precioData.filter(v=>v!=null), 1);
 
   const tabBtn = (id, label) => (
@@ -1923,15 +1953,15 @@ function NombreDetail({nombreItem, onBack, onEditPurchase}) {
       {/* Gasto tab */}
       {tab==='gasto' && (
         <div style={{...T.card(d),padding:20}}>
-          <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:16}}>Gasto por mes</div>
+          <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:16}}>Gasto {avgLbl}por mes</div>
           {MONTHS.map((m,i)=>(
-            <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,opacity:nombreItem.months[i]>0?1:0.35}}>
+            <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,opacity:gastoDisp[i]>0?1:0.35}}>
               <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
               <div style={{flex:1,height:10,background:T.track(d),borderRadius:5,overflow:'hidden'}}>
-                <div style={{height:'100%',width:`${maxGasto>0?(nombreItem.months[i]/maxGasto)*100:0}%`,background:PAL[i%12],borderRadius:5}}/>
+                <div style={{height:'100%',width:`${maxGasto>0?(gastoDisp[i]/maxGasto)*100:0}%`,background:PAL[i%12],borderRadius:5}}/>
               </div>
-              <div style={{width:90,fontSize:11,color:nombreItem.months[i]>0?T.text(d):T.sub(d),textAlign:'right'}}>
-                {nombreItem.months[i]>0?fmtFull(nombreItem.months[i]):'—'}
+              <div style={{width:90,fontSize:11,color:gastoDisp[i]>0?T.text(d):T.sub(d),textAlign:'right'}}>
+                {gastoDisp[i]>0?fmtFull(gastoDisp[i]):'—'}
               </div>
             </div>
           ))}
@@ -1942,18 +1972,18 @@ function NombreDetail({nombreItem, onBack, onEditPurchase}) {
       {tab==='cantidad' && (
         <div style={{...T.card(d),padding:20}}>
           <div style={{fontSize:11,color:T.muted(d),textTransform:'uppercase',letterSpacing:1,marginBottom:16}}>
-            Cantidad por mes {hasPkgSize ? `(${unit} → ${pkgUnit})` : `(${unit})`}
+            Cantidad {avgLbl}por mes {hasPkgSize ? `(${unit} → ${pkgUnit})` : `(${unit})`}
           </div>
           {rawCountData.some(v=>v>0) ? MONTHS.map((m,i)=>(
-            <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,opacity:rawCountData[i]>0?1:0.35}}>
+            <div key={m} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,opacity:rawDisp[i]>0?1:0.35}}>
               <div style={{width:28,fontSize:11,color:T.sub(d),textTransform:'uppercase'}}>{m}</div>
               <div style={{flex:1,height:10,background:T.track(d),borderRadius:5,overflow:'hidden'}}>
-                <div style={{height:'100%',width:`${(rawCountData[i]/Math.max(...rawCountData.filter(v=>v>0),1))*100}%`,background:PAL[i%12],borderRadius:5}}/>
+                <div style={{height:'100%',width:`${(rawDisp[i]/Math.max(...rawDisp.filter(v=>v>0),1))*100}%`,background:PAL[i%12],borderRadius:5}}/>
               </div>
-              <div style={{width:hasPkgSize?150:90,fontSize:11,color:rawCountData[i]>0?T.text(d):T.sub(d),textAlign:'right'}}>
-                {rawCountData[i]>0 ? (
-                  <>{rawCountData[i] % 1 === 0 ? rawCountData[i] : rawCountData[i].toFixed(2)} {unit}
-                  {hasPkgSize && <span style={{color:'#60a5fa'}}> ≈ {cantData[i] % 1 === 0 ? cantData[i] : cantData[i].toFixed(2)} {pkgUnit}</span>}</>
+              <div style={{width:hasPkgSize?150:90,fontSize:11,color:rawDisp[i]>0?T.text(d):T.sub(d),textAlign:'right'}}>
+                {rawDisp[i]>0 ? (
+                  <>{rawDisp[i] % 1 === 0 ? rawDisp[i] : rawDisp[i].toFixed(2)} {unit}
+                  {hasPkgSize && <span style={{color:'#60a5fa'}}> ≈ {cantDisp[i] % 1 === 0 ? cantDisp[i] : cantDisp[i].toFixed(2)} {pkgUnit}</span>}</>
                 ) : '—'}
               </div>
             </div>
@@ -2051,20 +2081,40 @@ function ComprasList({purchases, onEdit, allCategories}) {
   const [q,setQ]           = useState('');
   const [filter,setFilter] = useState('all');
   const [sortBy,setSortBy] = useState('date');
+  const [toggled,setToggled] = useState(()=>new Set()); // groups whose open/closed state was flipped by the user
   const uncat = purchases.filter(p=>!p.category).length;
+  const filtering = !!q || filter!=='all';
 
-  const list = useMemo(()=>{
+  const items = useMemo(()=>{
     let arr = [...purchases];
     if(filter==='uncategorized') arr = arr.filter(p=>!p.category);
     if(filter==='noname') arr = arr.filter(p=>!p.nombre);
     if(q){ const lq=q.toLowerCase(); arr=arr.filter(p=>p.rawName.toLowerCase().includes(lq)||(p.nombre||'').toLowerCase().includes(lq)||(p.category||'').toLowerCase().includes(lq)||(p.store||'').toLowerCase().includes(lq)); }
-    if(sortBy==='date') arr.sort((a,b)=>b.date.localeCompare(a.date));
-    else if(sortBy==='total') arr.sort((a,b)=>b.total-a.total);
-    else arr.sort((a,b)=>(a.nombre||a.rawName).localeCompare(b.nombre||b.rawName,'es'));
     return arr;
-  },[purchases,q,filter,sortBy]);
+  },[purchases,q,filter]);
 
+  // One group per date + place
+  const groups = useMemo(()=>{
+    const map = new Map();
+    for(const p of items){
+      const store = (p.store||'').trim() || 'Sin lugar';
+      const key = p.date+'|'+store;
+      if(!map.has(key)) map.set(key,{key,date:p.date,store,items:[],total:0,uncat:0});
+      const g = map.get(key);
+      g.items.push(p); g.total += p.total||0; if(!p.category) g.uncat++;
+    }
+    const arr = [...map.values()];
+    for(const g of arr) g.items.sort((a,b)=>(a.nombre||a.rawName).localeCompare(b.nombre||b.rawName,'es'));
+    if(sortBy==='date') arr.sort((a,b)=>b.date.localeCompare(a.date)||a.store.localeCompare(b.store,'es'));
+    else if(sortBy==='total') arr.sort((a,b)=>b.total-a.total);
+    else arr.sort((a,b)=>a.store.localeCompare(b.store,'es')||b.date.localeCompare(a.date));
+    return arr;
+  },[items,sortBy]);
+
+  const isOpen = k => filtering ? !toggled.has(k) : toggled.has(k); // searching/filtering opens groups by default
+  const toggle = k => setToggled(prev=>{ const n=new Set(prev); n.has(k)?n.delete(k):n.add(k); return n; });
   const noNameCount = purchases.filter(p=>!p.nombre).length;
+  const fmtDay = ds => { try{ const dt=new Date(ds+'T12:00:00'); return `${dt.getDate()} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`; }catch{ return ds; } };
 
   return (
     <div className="fade" style={{padding:'16px 20px',display:'flex',flexDirection:'column',gap:10}}>
@@ -2076,36 +2126,54 @@ function ComprasList({purchases, onEdit, allCategories}) {
       </div>
       <div style={{display:'flex',gap:6,alignItems:'center'}}>
         <span style={{fontSize:10,color:T.sub(d),textTransform:'uppercase',letterSpacing:1}}>Orden:</span>
-        {[['date','Fecha'],['total','Monto'],['name','Nombre']].map(([k,l])=>(
-          <button key={k} onClick={()=>setSortBy(k)} style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px solid ${sortBy===k?'#60a5fa':T.inactBdr(d)}`,background:sortBy===k?d?'#1a2a3a':'#e8f0ff':T.inactBg(d),color:sortBy===k?'#60a5fa':T.inactClr(d)}}>{l}</button>
+        {[['date','Fecha'],['total','Monto'],['name','Lugar']].map(([k,l])=>(
+          <button key={k} onClick={()=>setSortBy(k)} style={{padding:'5px 10px',borderRadius:8,fontSize:11,border:`1px solid ${sortBy===k?'#60a5fa':T.inactBdr(d)}`,background:sortBy===k?(d?'#1a2a3a':'#e8f0ff'):T.inactBg(d),color:sortBy===k?'#60a5fa':T.inactClr(d)}}>{l}</button>
         ))}
-        <span style={{marginLeft:'auto',fontSize:11,color:T.sub(d)}}>{list.length}</span>
+        <span style={{marginLeft:'auto',fontSize:11,color:T.sub(d)}}>{groups.length} salida{groups.length!==1?'s':''} · {items.length} prod.</span>
       </div>
       <div style={{...T.card(d),overflow:'hidden'}}>
-        {list.length===0 && <div style={{padding:32,textAlign:'center',color:T.sub(d),fontSize:13}}>Sin resultados</div>}
-        {list.map((p,i)=>(
-          <div key={p.id} onClick={()=>onEdit(p)}
-            style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',cursor:'pointer',borderBottom:i<list.length-1?`1px solid ${T.divider(d)}`:'none',transition:'background 0.15s'}}
-            onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
-            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:T.text(d)}}>{p.rawName}</div>
-              <div style={{display:'flex',gap:5,alignItems:'center',marginTop:4,flexWrap:'wrap'}}>
-                <span style={{fontSize:10,color:T.sub(d)}}>{p.date}</span>
-                {p.nombre && <span style={{fontSize:10,fontWeight:600,color:'#60a5fa'}}>→ {p.nombre}</span>}
-                {p.category
-                  ? <span className="badge" style={{background:d?'#1a3020':'#e8f5ee',color:'#4ade80'}}>{p.category}</span>
-                  : <span className="badge" style={{background:d?'#2a1500':'#fff3e0',color:'#f97316'}}>⚠ Sin cat.</span>
-                }
+        {groups.length===0 && <div style={{padding:32,textAlign:'center',color:T.sub(d),fontSize:13}}>Sin resultados</div>}
+        {groups.map((g,gi)=>{
+          const open = isOpen(g.key);
+          return (
+            <div key={g.key} style={{borderBottom:gi<groups.length-1?`1px solid ${T.divider(d)}`:'none'}}>
+              <div onClick={()=>toggle(g.key)}
+                style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',cursor:'pointer',background:open?T.rowHov(d):'transparent',transition:'background 0.15s'}}>
+                <div style={{color:T.sub(d),fontSize:12,width:12,flexShrink:0,transform:open?'rotate(90deg)':'none',transition:'transform 0.15s'}}>›</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,color:T.text(d),overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.store}</div>
+                  <div style={{display:'flex',gap:6,alignItems:'center',marginTop:3,flexWrap:'wrap'}}>
+                    <span style={{fontSize:10,color:T.sub(d)}}>{fmtDay(g.date)} · {g.items.length} producto{g.items.length!==1?'s':''}</span>
+                    {g.uncat>0 && <span className="badge" style={{background:d?'#2a1500':'#fff3e0',color:'#f97316'}}>⚠ {g.uncat} sin cat.</span>}
+                  </div>
+                </div>
+                <div style={{fontSize:13,color:'#f97316',fontWeight:700,flexShrink:0}}>{fmtFull(g.total)}</div>
               </div>
+              {open && g.items.map(p=>(
+                <div key={p.id} onClick={()=>onEdit(p)}
+                  style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px 10px 40px',cursor:'pointer',borderTop:`1px solid ${T.divider(d)}`,transition:'background 0.15s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.rowHov(d)}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:T.text(d)}}>{p.rawName}</div>
+                    <div style={{display:'flex',gap:5,alignItems:'center',marginTop:4,flexWrap:'wrap'}}>
+                      {p.nombre && <span style={{fontSize:10,fontWeight:600,color:'#60a5fa'}}>→ {p.nombre}</span>}
+                      {p.category
+                        ? <span className="badge" style={{background:d?'#1a3020':'#e8f5ee',color:'#4ade80'}}>{p.category}</span>
+                        : <span className="badge" style={{background:d?'#2a1500':'#fff3e0',color:'#f97316'}}>⚠ Sin cat.</span>
+                      }
+                    </div>
+                  </div>
+                  <div style={{textAlign:'right',flexShrink:0}}>
+                    <div style={{fontSize:13,color:'#f97316',fontWeight:600}}>{fmt(p.total)}</div>
+                    <div style={{fontSize:10,color:T.sub(d),marginTop:1}}>{p.qty} {p.unit||'UNI'}</div>
+                  </div>
+                  <div style={{color:T.sub(d),fontSize:12,marginLeft:2}}>✎</div>
+                </div>
+              ))}
             </div>
-            <div style={{textAlign:'right',flexShrink:0}}>
-              <div style={{fontSize:13,color:'#f97316',fontWeight:600}}>{fmt(p.total)}</div>
-              <div style={{fontSize:10,color:T.sub(d),marginTop:1}}>{p.qty} {p.unit||'UNI'}</div>
-            </div>
-            <div style={{color:T.sub(d),fontSize:12,marginLeft:2}}>✎</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -2566,7 +2634,7 @@ function CatalogoEditModal({item, onSave, onDelete, onClose}) {
           <FieldLabel>Unidad del envase</FieldLabel>
           <Sel value={pkgUnit} onChange={e=>setPkgUnit(e.target.value)}>
             <option value="">— N/A —</option>
-            {['kg','g','L','ml','rollos','UNI'].map(u=><option key={u}>{u}</option>)}
+            {['kg','g','L','ml','rollos','metros','UNI'].map(u=><option key={u}>{u}</option>)}
           </Sel>
         </div>
       </div>
@@ -2705,6 +2773,9 @@ function App() {
     if (selectedYear == null) return purchases; // "Todos" or not yet initialized
     return purchases.filter(p => yearOf(p.date) === selectedYear);
   }, [purchases, selectedYear]);
+
+  // Only in "Todos los años": per-month averages instead of multi-year sums
+  const monthInfo = useMemo(() => selectedYear == null ? buildMonthWeights(purchases) : null, [purchases, selectedYear]);
 
   const usedIds    = useMemo(()=>new Set(purchases.map(p=>p.invoiceId)),[purchases]);
   const uncatCount = useMemo(()=>purchases.filter(p=>!p.category).length,[purchases]);
@@ -3129,12 +3200,12 @@ function App() {
           </div>
         )}
 
-        {view==='dashboard'     && <Dashboard purchases={filteredPurchases} onGoCats={()=>goNav('cats')} onGoProductos={n=>{ if(n){ setSNombre(n); setView('producto-detail'); } else goNav('productos'); }} onGoCompras={()=>goNav('compras')}/>}
+        {view==='dashboard'     && <Dashboard monthInfo={monthInfo} purchases={filteredPurchases} onGoCats={()=>goNav('cats')} onGoProductos={n=>{ if(n){ setSNombre(n); setView('producto-detail'); } else goNav('productos'); }} onGoCompras={()=>goNav('compras')}/>}
         {view==='cats'          && <CatList purchases={filteredPurchases} onSelectCat={cat=>{ setSCat(cat.name); setView('nombres'); }}/>}
-        {view==='productos'     && <NombreList purchases={filteredPurchases} catName={null} onBack={null} onSelectNombre={n=>{ setSNombre(n); setView('producto-detail'); }} onCompare={n=>{setCompareInitial(n);setShowCompare(true);}}/>}
-        {view==='producto-detail' && liveNombreGlobal && <NombreDetail nombreItem={liveNombreGlobal} onBack={()=>{ setSNombre(null); setView('productos'); }} onEditPurchase={setEditingP}/>}
-        {view==='nombres'       && selectedCat && <NombreList purchases={filteredPurchases} catName={selectedCat} onBack={()=>setView('cats')} onSelectNombre={n=>{ setSNombre(n); setView('nombre-detail'); }} onCompare={n=>{setCompareInitial(n);setShowCompare(true);}}/>}
-        {view==='nombre-detail' && liveNombre  && <NombreDetail nombreItem={liveNombre} onBack={()=>setView('nombres')} onEditPurchase={setEditingP}/>}
+        {view==='productos'     && <NombreList monthInfo={monthInfo} purchases={filteredPurchases} catName={null} onBack={null} onSelectNombre={n=>{ setSNombre(n); setView('producto-detail'); }} onCompare={n=>{setCompareInitial(n);setShowCompare(true);}}/>}
+        {view==='producto-detail' && liveNombreGlobal && <NombreDetail monthInfo={monthInfo} nombreItem={liveNombreGlobal} onBack={()=>{ setSNombre(null); setView('productos'); }} onEditPurchase={setEditingP}/>}
+        {view==='nombres'       && selectedCat && <NombreList monthInfo={monthInfo} purchases={filteredPurchases} catName={selectedCat} onBack={()=>setView('cats')} onSelectNombre={n=>{ setSNombre(n); setView('nombre-detail'); }} onCompare={n=>{setCompareInitial(n);setShowCompare(true);}}/>}
+        {view==='nombre-detail' && liveNombre  && <NombreDetail monthInfo={monthInfo} nombreItem={liveNombre} onBack={()=>setView('nombres')} onEditPurchase={setEditingP}/>}
         {view==='compras'       && <ComprasList purchases={purchases} onEdit={setEditingP} allCategories={allCategories} onAddNew={handleAddNew}/>}
         {view==='catalogo'     && <Catalogo productsDict={productsDict||{}} setProductsDict={handleSetProductsDict}/>}
       </div>
